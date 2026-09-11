@@ -2,8 +2,6 @@
 
 import { useId, useState, type KeyboardEvent, type ReactNode, type SyntheticEvent } from 'react';
 import Badge from '@/components/ui/Badge';
-import Button from '@/components/ui/Button';
-import { FIELD_CONTROL_CLS } from '@/components/ui/Field';
 import { RowActionsBase, type RowAction } from '@/components/ui/RowActions';
 import { formatDocumentDate, formatInt } from '@/lib/utils';
 import type { DocumentosAutomacao } from '@/lib/documentos/families';
@@ -176,15 +174,6 @@ export type DocumentosFamilyTableProps = {
   columnLabel: string;
   rows: DocumentosRow[];
   canWrite: boolean;
-  editingId: string | null;
-  /** `validUntil` (padrão) ou `emitidoEm` (coluna Assinatura). */
-  editingField?: 'validUntil' | 'emitidoEm';
-  editDraft: string;
-  saving: boolean;
-  onEditDraft: (value: string) => void;
-  onStartEdit: (row: DocumentosRow, field?: 'validUntil' | 'emitidoEm') => void;
-  onSaveEdit: () => void;
-  onCancelEdit: () => void;
   onView: (row: DocumentosRow) => void;
   onOpenDetail: (row: DocumentosRow) => void;
   onUpdate: (row: DocumentosRow) => void;
@@ -206,14 +195,6 @@ function DocumentosTableBody({
   columnLabel,
   rows,
   canWrite,
-  editingId,
-  editingField = 'validUntil',
-  editDraft,
-  saving,
-  onEditDraft,
-  onStartEdit,
-  onSaveEdit,
-  onCancelEdit,
   onView,
   onOpenDetail,
   onUpdate,
@@ -222,96 +203,16 @@ function DocumentosTableBody({
   showValidityColumns,
   showSignatureColumn,
 }: TableBodyProps) {
-  function isEditingRow(row: DocumentosRow, field: 'validUntil' | 'emitidoEm' = 'validUntil'): boolean {
-    return canWrite && row.id !== null && editingId === row.id && editingField === field;
-  }
-
   function canUpdateRow(row: DocumentosRow): boolean {
     return canWrite && row.category === 'certidao';
   }
 
-  function rowActivateLabel(row: DocumentosRow): string | null {
-    if (editingId === row.id) return null;
+  function rowActivateLabel(row: DocumentosRow): string {
     return `Abrir gestão de ${row.label}`;
   }
 
   function activateRow(row: DocumentosRow) {
-    if (editingId === row.id) return;
     onOpenDetail(row);
-  }
-
-  function DatePencil({
-    row,
-    field,
-    label,
-  }: {
-    row: DocumentosRow;
-    field: 'validUntil' | 'emitidoEm';
-    label: string;
-  }) {
-    if (!canWrite || !row.id || row.expira === false) return null;
-    return (
-      <button
-        type="button"
-        className="ml-0.5 p-0.5 rounded text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors"
-        title={label}
-        aria-label={label}
-        onClick={(event) => {
-          event.stopPropagation();
-          onStartEdit(row, field);
-        }}
-      >
-        <span className="material-symbols-outlined text-[14px] leading-none" aria-hidden="true">
-          edit
-        </span>
-      </button>
-    );
-  }
-
-  function DateEditor({
-    row,
-    field,
-    ariaLabel,
-    value,
-  }: {
-    row: DocumentosRow;
-    field: 'validUntil' | 'emitidoEm';
-    ariaLabel: string;
-    value: string | null;
-  }) {
-    if (isEditingRow(row, field)) {
-      return (
-        <span className="inline-flex items-center gap-1">
-          <input
-            type="date"
-            value={editDraft}
-            onChange={(event) => onEditDraft(event.target.value)}
-            aria-label={ariaLabel}
-            className={`${FIELD_CONTROL_CLS} max-w-40`}
-          />
-          <Button size="xs" onClick={() => onSaveEdit()} loading={saving} disabled={!editDraft}>
-            Salvar
-          </Button>
-          <Button size="xs" variant="ghost" onClick={onCancelEdit} disabled={saving}>
-            Cancelar
-          </Button>
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center gap-0.5">
-        {row.id && row.expira === false && field === 'validUntil' ? (
-          <span className="text-slate-500 dark:text-slate-400">—</span>
-        ) : (
-          <ValidityText value={value} />
-        )}
-        <DatePencil
-          row={row}
-          field={field}
-          label={field === 'emitidoEm' ? 'Editar assinatura' : 'Editar validade'}
-        />
-      </span>
-    );
   }
 
   function rowActions(row: DocumentosRow) {
@@ -408,53 +309,37 @@ function DocumentosTableBody({
           {rows.map((row) => {
             const key = row.id ?? `${row.category}:${row.kind}:${row.label}`;
             const activateLabel = rowActivateLabel(row);
-            const clickable = activateLabel != null;
             return (
               <tr
                 key={key}
-                role={clickable ? 'button' : undefined}
-                tabIndex={clickable ? 0 : undefined}
-                aria-label={activateLabel ?? undefined}
-                onClick={clickable ? () => activateRow(row) : undefined}
-                onKeyDown={
-                  clickable
-                    ? (event: KeyboardEvent<HTMLTableRowElement>) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          activateRow(row);
-                        }
-                      }
-                    : undefined
-                }
-                className={`border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 ${
-                  clickable ? 'cursor-pointer' : ''
-                }`}
+                role="button"
+                tabIndex={0}
+                aria-label={activateLabel}
+                onClick={() => activateRow(row)}
+                onKeyDown={(event: KeyboardEvent<HTMLTableRowElement>) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    activateRow(row);
+                  }
+                }}
+                className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer"
               >
                 <td className={CELL}>
                   <span className="text-sm font-medium text-slate-900 dark:text-white">{row.label}</span>
                 </td>
                 {showSignatureColumn ? (
-                  <td
-                    className={`${CELL} text-sm whitespace-nowrap`}
-                    onClick={stopRowEvent}
-                    onKeyDown={stopRowEvent}
-                  >
-                    <DateEditor row={row} field="emitidoEm" ariaLabel="Assinatura" value={row.emitidoEm} />
+                  <td className={`${CELL} text-sm whitespace-nowrap`}>
+                    <ValidityText value={row.emitidoEm} />
                   </td>
                 ) : null}
                 {showValidityColumns ? (
                   <>
-                    <td
-                      className={`${CELL} text-sm whitespace-nowrap`}
-                      onClick={stopRowEvent}
-                      onKeyDown={stopRowEvent}
-                    >
-                      <DateEditor
-                        row={row}
-                        field="validUntil"
-                        ariaLabel="Validade"
-                        value={row.validUntil}
-                      />
+                    <td className={`${CELL} text-sm whitespace-nowrap`}>
+                      {row.id && row.expira === false ? (
+                        <span className="text-slate-500 dark:text-slate-400">—</span>
+                      ) : (
+                        <ValidityText value={row.validUntil} />
+                      )}
                     </td>
                     <td className={CELL}>
                       <DaysCell row={row} />
@@ -530,13 +415,6 @@ export default function DocumentosFamilyTable({
 export type DocumentosBalancoGroupsProps = {
   groups: DocumentosBalancoYear[];
   canWrite: boolean;
-  editingId: string | null;
-  editDraft: string;
-  saving: boolean;
-  onEditDraft: (value: string) => void;
-  onStartEdit: (row: DocumentosRow) => void;
-  onSaveEdit: () => void;
-  onCancelEdit: () => void;
   onView: (row: DocumentosRow) => void;
   onOpenDetail: (row: DocumentosRow) => void;
   onUpdate: (row: DocumentosRow) => void;

@@ -15,10 +15,23 @@ export const documentosPatchSchema = z
   .object({
     validUntil: documentosValidUntilSchema.optional(),
     emitidoEm: documentosValidUntilSchema.nullable().optional(),
+    manufacturer: z
+      .string()
+      .trim()
+      .max(200, 'fabricante deve ter no máximo 200 caracteres')
+      .nullable()
+      .optional()
+      .transform((value) => (value === '' ? null : value)),
   })
-  .refine((value) => value.validUntil !== undefined || value.emitidoEm !== undefined, {
-    message: 'Informe validUntil e/ou emitidoEm',
-  });
+  .refine(
+    (value) =>
+      value.validUntil !== undefined ||
+      value.emitidoEm !== undefined ||
+      value.manufacturer !== undefined,
+    {
+      message: 'Informe validUntil, emitidoEm e/ou manufacturer',
+    },
+  );
 
 export const documentosUploadFieldsSchema = z.object({
   kind: documentosKindSchema,

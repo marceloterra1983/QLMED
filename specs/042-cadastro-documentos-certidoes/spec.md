@@ -129,10 +129,12 @@ falhar de forma visível, não chutar.
   FR-011 e o ciclo de arquivo de FR-016 **na mesma requisição** (não espera
   a ingestão horária). Falha de WhatsApp ou de arquivo não reverte o upload
   já gravado; fica no log saneado.
-- **FR-008**: Editar validade ou assinatura (editor+) via
-  `PATCH /api/documentos/{id}` (`validUntil` e/ou `emitidoEm`). Validade
-  manual grava `validUntilSource = 'manual'`; a ingestão não sobrescreve
-  validade manual.
+- **FR-008**: Editar validade, assinatura e (em cartas) fabricante (editor+)
+  via `PATCH /api/documentos/{id}` (`validUntil`, `emitidoEm` e/ou
+  `manufacturer`). A edição ocorre no **popup de gestão** (lápis discreto
+  ao lado do campo), não na linha da tabela. Validade manual grava
+  `validUntilSource = 'manual'`; a ingestão não sobrescreve validade
+  manual. `manufacturer` só é aceite em documentos `category = carta`.
 
 ### Autorização e isolamento
 
@@ -327,12 +329,12 @@ falhar de forma visível, não chutar.
 
 - **FR-033**: Acções de linha via `RowActionsBase`: inline `receipt_long`
   "Ver documento" e `print` "Imprimir" (`hideOnMobile`); menu Compartilhar
-  (`share`), Baixar (`download`), Atualizar arquivo (`upload_file`). Editar
-  validade/assinatura é o **lápis pequeno** ao lado da data na célula (não no
-  menu). Balanço (documento PDF): mesmas ações do societário
-  (Ver/Imprimir/Baixar/Compartilhar/WhatsApp), sem Atualizar arquivo e sem
-  lápis (`expira: false`). Cabeçalho do ano: `folder_open` opcional
-  quando há `folderWebUrl`.
+  (`share`), Baixar (`download`), Atualizar arquivo (`upload_file`). A
+  tabela **não** tem lápis de edição — datas e fabricante editam-se no
+  popup de gestão (FR-039). Balanço (documento PDF): mesmas ações do
+  societário (Ver/Imprimir/Baixar/Compartilhar/WhatsApp), sem Atualizar
+  arquivo e sem edição de validade (`expira: false`). Cabeçalho do ano:
+  `folder_open` opcional quando há `folderWebUrl`.
 
 - **FR-034**: "Compartilhar" abre `DocumentoShareModal`: caixas da allowlist
   `DOCUMENTOS_SHARE_RECIPIENTS` (rótulo) **e** um campo para escrever e-mail
@@ -360,14 +362,17 @@ falhar de forma visível, não chutar.
 - **FR-038**: Células da tabela usam `px-3 py-2 sm:py-1.5`. Os botões de
   acção mantêm `min-h-11 min-w-11` no telemóvel. O link de emissão da linha
   (FR-017) permanece.
-- **FR-039**: O popup de gestão mostra, nesta ordem: tipo e nome do ficheiro;
-  **Emitido em** (`CompanyDocument.emitidoEm`, ou "não informado" — nunca
-  `lastModifiedAt`); **Vence em** (ou "não vence" se `expira: false`); **Dias
-  restantes** com o mesmo destaque `<= 7` da tabela; **O que é este
-  documento** (`descricao` do tipo); **Quem emite / onde renovar** (`orgao` +
-  `emissaoUrl` quando existir) — este bloco aparece **sempre**, inclusive nos
-  tipos que não vencem; acções Ver, Baixar, Compartilhar, WhatsApp, Atualizar
-  arquivo, Editar validade.
+- **FR-039**: O popup de gestão mostra, nesta ordem: tipo (ou **Fabricante**
+  nas cartas) e nome do ficheiro; **Emitido em** / **Assinatura** nas cartas
+  (`CompanyDocument.emitidoEm`, ou "não informado" — nunca `lastModifiedAt`);
+  **Vence em** (ou "não vence" se `expira: false`); **Dias restantes** com o
+  mesmo destaque `<= 7` da tabela; **O que é este documento** (`descricao`
+  do tipo); **Quem emite / onde renovar** (`orgao` + `emissaoUrl` quando
+  existir) — este bloco aparece **sempre**, inclusive nos tipos que não
+  vencem; acções Ver, Baixar, Compartilhar, WhatsApp, Atualizar arquivo.
+  Com `canWrite`, cada campo editável (datas quando `expira !== false`;
+  fabricante só em cartas) tem um **lápis discreto** (`text-[12px]`) que
+  abre edição inline no próprio popup e persiste via PATCH (FR-008).
 - **FR-040**: `emitidoEm DateTime? @db.Date` é extraído do PDF pela mesma
   máquina de validade: início da faixa `Validade: X a Y`; rótulos `emitida em`,
   `emitido em`, `data de emissão`, `emissão:`. Sem match → `null`. Guarda de

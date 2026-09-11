@@ -49,6 +49,7 @@ function missingRow(kind: (typeof CERTIDAO_KINDS_ORDER)[number]): DocumentosRow 
     category: 'certidao',
     label: CERTIDAO_LABEL[kind],
     fileName: null,
+    manufacturer: null,
     validUntil: null,
     emitidoEm: null,
     daysRemaining: null,
@@ -72,6 +73,7 @@ function row(
     category: 'certidao',
     label: CERTIDAO_LABEL[kind],
     fileName: `${kind}.pdf`,
+    manufacturer: null,
     validUntil: '2026-12-12',
     emitidoEm: null,
     daysRemaining: 99,
@@ -91,6 +93,7 @@ function listing(overrides: Partial<DocumentosListing> = {}): DocumentosListing 
     row('cnd_federal', {
       id: 'doc-federal',
       fileName: 'CERTIDAO RECEITA FEDERAL 12.12.26 - QL MED.pdf',
+          manufacturer: null,
       validUntil: '2026-12-12',
       daysRemaining: 99,
       status: { key: 'ok', label: 'ok' },
@@ -98,6 +101,7 @@ function listing(overrides: Partial<DocumentosListing> = {}): DocumentosListing 
     row('crf_fgts', {
       id: 'doc-fgts',
       fileName: 'CERTIDAO FGTS 01.09.26 QL MED.pdf',
+          manufacturer: null,
       validUntil: '2026-09-01',
       daysRemaining: -3,
       status: { key: 'vencida', label: 'vencida há 3 dias' },
@@ -262,16 +266,20 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
     }
   });
 
-  it('o lápis só existe para canWrite, tem aria-label, e o card recolhe/expande', async () => {
+  it('tabela sem lápis; edição de validade fica no popup de gestão', async () => {
     stubFetch(() => jsonResponse(listing()));
     render(<DocumentosPageClient />);
     const table = await certidoesTable();
 
     const federal = within(table).getByText(CERTIDAO_LABEL.cnd_federal).closest('tr')!;
-    expect(within(federal).getByRole('button', { name: 'Editar validade' })).toBeTruthy();
+    expect(within(federal).queryByRole('button', { name: 'Editar validade' })).toBeNull();
 
     const gerais = within(table).getByText(CERTIDAO_LABEL.cnd_municipal_gerais).closest('tr')!;
     expect(within(gerais).queryByRole('button', { name: 'Editar validade' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir gestão de CND Receita Federal' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Gestão: CND Receita Federal' });
+    expect(within(dialog).getByRole('button', { name: 'Editar validade' })).toBeTruthy();
 
     const toggle = screen.getByRole('button', { name: /Certidões/ });
     expect(toggle.getAttribute('aria-expanded')).toBe('true');
@@ -312,22 +320,20 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
     expect(screen.queryByRole('button', { name: /Editar validade/ })).toBeNull();
   });
 
-  it('Cancelar limpa o rascunho para não pinar a data noutra linha', async () => {
+  it('Cancelar no popup limpa o rascunho sem PATCH', async () => {
     stubFetch(() => jsonResponse(listing()));
     render(<DocumentosPageClient />);
     await certidoesTable();
 
-    const table = screen.getByRole('table', { name: 'Certidões' });
-    const federal = within(table).getByText(CERTIDAO_LABEL.cnd_federal).closest('tr')!;
-    fireEvent.click(within(federal).getByRole('button', { name: 'Editar validade' }));
-    const input = screen.getByLabelText('Validade') as HTMLInputElement;
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir gestão de CND Receita Federal' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Gestão: CND Receita Federal' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Editar validade' }));
+    const input = within(dialog).getByLabelText('Validade') as HTMLInputElement;
     fireEvent.change(input, { target: { value: '2027-01-15' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
 
-    expect(screen.queryByLabelText('Validade')).toBeNull();
-    const fgts = within(table).getByText(CERTIDAO_LABEL.crf_fgts).closest('tr')!;
-    fireEvent.click(within(fgts).getByRole('button', { name: 'Editar validade' }));
-    expect((screen.getByLabelText('Validade') as HTMLInputElement).value).toBe('2026-09-01');
+    expect(within(dialog).queryByLabelText('Validade')).toBeNull();
+    expect(within(dialog).getByText('12/12/2026')).toBeTruthy();
   });
 
   it('Imprimir usa o visualizador, sem ?print=true', async () => {
@@ -437,6 +443,7 @@ describe('SPEC-042 L10 — três famílias na mesma página', () => {
           category: 'sanitaria',
           label: 'AFE — Autorização de Funcionamento ANVISA',
           fileName: 'AFE - EMITIDO EM 06.01.2026.pdf',
+          manufacturer: null,
           validUntil: null,
           daysRemaining: null,
           status: { key: 'nao_vence', label: 'não vence' },
@@ -475,6 +482,7 @@ describe('SPEC-042 L11 — contrato social, básicos e balanços na página', ()
           category: 'societario',
           label: 'Contrato Social — Consolidado',
           fileName: 'CONTRATO SOCIAL- CONSTITUIÇÃO + ULTIMA ALTERAÇÃO.pdf',
+          manufacturer: null,
           validUntil: null,
           daysRemaining: null,
           status: { key: 'nao_vence', label: 'não vence' },
@@ -494,6 +502,7 @@ describe('SPEC-042 L11 — contrato social, básicos e balanços na página', ()
           category: 'basicos',
           label: 'Cartão CNPJ',
           fileName: 'CARTÃO CNPJ 31.08.26.pdf',
+          manufacturer: null,
           validUntil: null,
           daysRemaining: null,
           status: { key: 'nao_vence', label: 'não vence' },
@@ -517,6 +526,7 @@ describe('SPEC-042 L11 — contrato social, básicos e balanços na página', ()
               category: 'balanco',
               label: 'BP 2026',
               fileName: 'BP 2026.pdf',
+          manufacturer: null,
               validUntil: null,
               daysRemaining: null,
               status: { key: 'nao_vence', label: 'não vence' },
@@ -594,6 +604,7 @@ describe('SPEC-042 L12 — linha clicável, padrão de ícones e tags', () => {
               category: 'balanco',
               label: 'BP 2026',
               fileName: 'BP 2026.pdf',
+          manufacturer: null,
               validUntil: null,
               daysRemaining: null,
               status: { key: 'nao_vence', label: 'não vence' },
@@ -629,8 +640,8 @@ describe('SPEC-042 L12 — linha clicável, padrão de ícones e tags', () => {
     expect(within(federal).getByRole('button', { name: 'Compartilhar' })).toBeTruthy();
     expect(within(federal).getByRole('button', { name: 'Baixar' })).toBeTruthy();
     expect(within(federal).getByRole('button', { name: 'Atualizar arquivo' })).toBeTruthy();
-    // Lápis ao lado da data (não no menu).
-    expect(within(federal).getByRole('button', { name: 'Editar validade' })).toBeTruthy();
+    // Lápis só no popup de gestão, não na tabela.
+    expect(within(federal).queryByRole('button', { name: 'Editar validade' })).toBeNull();
   });
 
   it('tag AUTO só no FGTS, junto dos dias restantes; nada para manual/assistida', async () => {
@@ -642,6 +653,7 @@ describe('SPEC-042 L12 — linha clicável, padrão de ícones e tags', () => {
           category: 'sanitaria',
           label: 'AFE — Autorização de Funcionamento ANVISA',
           fileName: 'AFE - EMITIDO EM 06.01.2026.pdf',
+          manufacturer: null,
           validUntil: null,
           daysRemaining: null,
           status: { key: 'nao_vence', label: 'não vence' },
@@ -738,6 +750,7 @@ describe('SPEC-042 — cartas vencidas e balanços por ano', () => {
           category: 'carta',
           label: 'TECHIMPORT',
           fileName: 'Carta Comercialização TECHIMPORT.pdf',
+          manufacturer: null,
           validUntil: '2026-12-01',
           emitidoEm: null,
           daysRemaining: 80,
@@ -755,6 +768,7 @@ describe('SPEC-042 — cartas vencidas e balanços por ano', () => {
           category: 'carta',
           label: 'VENCIDA SA',
           fileName: 'Carta Comercialização VENCIDA SA.pdf',
+          manufacturer: null,
           validUntil: '2026-08-01',
           emitidoEm: null,
           daysRemaining: -40,
@@ -793,6 +807,7 @@ describe('SPEC-042 — cartas vencidas e balanços por ano', () => {
               category: 'balanco',
               label: 'DRE 2025',
               fileName: 'DRE 2025.pdf',
+          manufacturer: null,
               validUntil: null,
               emitidoEm: null,
               daysRemaining: null,
@@ -836,6 +851,7 @@ describe('SPEC-042 L14 — preencher emissões', () => {
               category: 'balanco',
               label: 'BP 2026',
               fileName: 'BP 2026.pdf',
+          manufacturer: null,
               validUntil: null,
               emitidoEm: null,
               daysRemaining: null,
