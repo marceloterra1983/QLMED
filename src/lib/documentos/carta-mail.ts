@@ -11,7 +11,7 @@ import { uploadOneDriveFile } from '@/lib/onedrive-client';
 import { ensureValidOneDriveAccessToken } from '@/lib/onedrive-connections';
 import prisma from '@/lib/prisma';
 import { looksLikePdf } from '@/lib/pdf/ocr-limits';
-import { fold, isCartaComercializacaoCandidate } from './classify';
+import { fold, isCartaComercializacaoCandidate, looksLikeNotaFiscalDocument } from './classify';
 import { DOCUMENTOS_ONEDRIVE_ACCOUNT, DOCUMENTOS_UPLOAD_MAX_BYTES, familyByCategory } from './constants';
 import { extractPdfPlainText } from './pdf-validity';
 
@@ -150,11 +150,23 @@ export async function scanCartaMailboxes(
           result.skipped += 1;
           continue;
         }
-        // Sempre ler o PDF: assunto «carta de comercialização» + anexo DANFE
-        // passava antes sem abrir o ficheiro (FR-044).
+        // Nome NF → fora sem abrir. OCR só quando nome/assunto já sugerem carta
+        // (senão pdf.js basta para caçar tema no texto; OCR em todos os anexos
+        // de 80 páginas Graph congela a ingestão).
+        if (looksLikeNotaFiscalDocument(attachment.name)) {
+          result.skipped += 1;
+          continue;
+        }
+        const nameSubjectHit = isCartaComercializacaoCandidate(
+          attachment.name,
+          message.subject,
+          '',
+        );
         let text = '';
         try {
-          text = await extractPdfPlainText(attachment.content, { ocrFallback: true });
+          text = await extractPdfPlainText(attachment.content, {
+            ocrFallback: nameSubjectHit,
+          });
         } catch {
           text = '';
         }

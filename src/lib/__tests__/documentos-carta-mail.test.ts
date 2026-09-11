@@ -48,6 +48,12 @@ describe('isCartaComercializacaoCandidate', () => {
       isCartaComercializacaoCandidate('pedido.pdf', 'Carta', 'nota fiscal de devolucao'),
     ).toBe(false);
   });
+
+  it('nome/assunto de carta basta sem texto (OCR só depois)', () => {
+    expect(
+      isCartaComercializacaoCandidate('Carta Comercialização GABMED.pdf', 'FW: carta', ''),
+    ).toBe(true);
+  });
 });
 
 describe('scanCartaMailboxes', () => {
