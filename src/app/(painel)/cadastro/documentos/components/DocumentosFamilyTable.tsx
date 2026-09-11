@@ -253,7 +253,7 @@ function DocumentosTableBody({
     return (
       <button
         type="button"
-        className="ml-0.5 p-0.5 rounded text-slate-400 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors"
+        className="ml-0.5 p-0.5 rounded text-slate-500 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/10 transition-colors"
         title={label}
         aria-label={label}
         onClick={(event) => {
