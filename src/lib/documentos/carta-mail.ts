@@ -154,23 +154,15 @@ export async function scanCartaMailboxes(
           result.skipped += 1;
           continue;
         }
-        // Nome NF → fora sem abrir. OCR só quando nome/assunto já sugerem carta
-        // (senão pdf.js basta para caçar tema no texto; OCR em todos os anexos
-        // de 80 páginas Graph congela a ingestão).
+        // Nome NF/junk → fora sem abrir. OCR só se pdf.js tiver pouco texto
+        // (`extractPdfPlainText`); anexos já filtrados por nome, teto 40 páginas.
         if (looksLikeNotaFiscalDocument(attachment.name) || looksLikeCartaFolderJunk(attachment.name)) {
           result.skipped += 1;
           continue;
         }
-        const nameSubjectHit = isCartaComercializacaoCandidate(
-          attachment.name,
-          message.subject,
-          '',
-        );
         let text = '';
         try {
-          text = await extractPdfPlainText(attachment.content, {
-            ocrFallback: nameSubjectHit,
-          });
+          text = await extractPdfPlainText(attachment.content, { ocrFallback: true });
         } catch {
           text = '';
         }
