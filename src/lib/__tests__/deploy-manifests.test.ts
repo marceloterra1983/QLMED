@@ -272,3 +272,49 @@ describe('REAUD-B-12 — bancos de produção com no-new-privileges e cap_drop',
     expect(naked.services.db.security_opt ?? []).not.toContain('no-new-privileges:true');
   });
 });
+
+/**
+ * Writer is vps2. The qlmed-prod runner stays on `server` (build + GitHub
+ * listener) and must not `compose up` / health-check :13000 against the
+ * retired local stack.
+ */
+describe('deploy-production.yml — writer is vps2, runner stays on server', () => {
+  const yml = read('.github/workflows/deploy-production.yml');
+  const remote = existsSync(join(root, 'scripts/qlmed-deploy-vps2.sh'))
+    ? read('scripts/qlmed-deploy-vps2.sh')
+    : '';
+
+  it('continua no runner qlmed-prod e no compose canónico', () => {
+    expect(yml).toMatch(/runs-on:\s*\n(?:[ \t]*#[^\n]*\n)*[ \t]*-[ \t]*qlmed-prod/);
+    expect(yml).toContain('/home/marce/qlmed/production/docker-compose.yml');
+  });
+
+  it('aponta o writer para vps2 e delega mutação a scripts/qlmed-deploy-vps2.sh', () => {
+    expect(yml).toMatch(/QLMED_DEPLOY_HOST:\s*vps2/);
+    expect(yml).toContain('scripts/qlmed-deploy-vps2.sh');
+    expect(yml).toContain('load-image');
+    expect(remote).toMatch(/docker save/);
+    expect(remote).toMatch(/up -d --no-build qlmed-app/);
+    expect(remote).toMatch(/127\.0\.0\.1:13000/);
+    expect(remote).toMatch(/\bssh\b/);
+  });
+
+  it('não sobe nem verifica o qlmed-app no host do runner', () => {
+    expect(yml).not.toMatch(/up -d --no-build(?: --force-recreate)? qlmed-app/);
+    expect(yml).not.toMatch(/curl[^\n]*127\.0\.0\.1:13000/);
+    expect(yml).toMatch(/running on the runner host/);
+  });
+
+  it('reprova o workflow antigo que fazia up local (controlo positivo)', () => {
+    expect(yml).not.toMatch(/Deploy stack on server/);
+    const legacy = [
+      '      - name: Deploy stack on server',
+      '        run: docker compose up -d --no-build qlmed-app',
+      '      - name: Verify local health',
+      '        run: curl -fsS http://127.0.0.1:13000/api/health',
+    ].join('\n');
+    expect(legacy).toMatch(/up -d --no-build qlmed-app/);
+    expect(legacy).toMatch(/curl[^\n]*127\.0\.0\.1:13000/);
+    expect(legacy).not.toMatch(/QLMED_DEPLOY_HOST:\s*vps2/);
+  });
+});
