@@ -153,6 +153,21 @@ assert.match(
   /Worker install attempt/,
   'worker install must retry transient smoke 401s before failing the job',
 );
+assert.match(
+  deployYml,
+  /QLMED_DEPLOY_HOST:\s*vps2/,
+  'production writer is vps2; the qlmed-prod runner only builds',
+);
+assert.match(
+  deployYml,
+  /scripts\/qlmed-deploy-vps2\.sh/,
+  'compose up / migrate / :13000 health must go through the vps2 helper',
+);
+assert.doesNotMatch(
+  deployYml,
+  /curl[^\n]*127\.0\.0\.1:13000/,
+  'runner must not health-check the retired local :13000',
+);
 
 const installer = fs.readFileSync('scripts/install-notification-outbox-cron.sh', 'utf8');
 assert.match(

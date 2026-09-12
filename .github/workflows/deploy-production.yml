@@ -28,7 +28,7 @@ concurrency:
 
 jobs:
   deploy:
-    timeout-minutes: 45
+    timeout-minutes: 60
     environment:
       name: production
       url: https://app.qlmed.com.br
@@ -37,6 +37,10 @@ jobs:
     # repo. The production runner is registered with --no-default-labels.
     runs-on:
       - qlmed-prod
+    # Listener + image build stay on this runner (server). Writer is vps2.
+    env:
+      QLMED_DEPLOY_HOST: vps2
+      QLMED_PROD_DIR: /home/marce/qlmed/production
 
     steps:
       - name: Fail closed — require explicit DEPLOY confirmation
@@ -171,10 +175,25 @@ jobs:
             exit 1
           fi
 
+      - name: Fail closed — writer reachable
+        run: bash scripts/qlmed-deploy-vps2.sh ping
+
+      - name: Fail closed — runner host is not the writer
+        run: |
+          set -euo pipefail
+          running="$(docker inspect qlmed-app --format '{{.State.Running}}' 2>/dev/null || echo false)"
+          if [[ "$running" == "true" ]]; then
+            echo "Refusing deploy: qlmed-app is running on the runner host; production writer is ${QLMED_DEPLOY_HOST}" >&2
+            exit 1
+          fi
+
       - name: Sync production manifests
         run: |
           mkdir -p /home/marce/qlmed/production
           cp production/docker-compose.yml /home/marce/qlmed/production/docker-compose.yml
+          rsync -e "ssh -o BatchMode=yes -o ConnectTimeout=30" -a \
+            /home/marce/qlmed/production/docker-compose.yml \
+            "${QLMED_DEPLOY_HOST}:/home/marce/qlmed/production/docker-compose.yml"
 
       - name: Sync application source
         run: |
@@ -187,6 +206,16 @@ jobs:
             --exclude 'node_modules' \
             --exclude 'production' \
             ./ /home/marce/qlmed/production/app/
+          ssh -o BatchMode=yes -o ConnectTimeout=30 "${QLMED_DEPLOY_HOST}" \
+            "mkdir -p /home/marce/qlmed/production/app"
+          rsync -e "ssh -o BatchMode=yes -o ConnectTimeout=30" -rl --delete \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude '.env' \
+            --exclude '.next' \
+            --exclude 'node_modules' \
+            --exclude 'production' \
+            ./ "${QLMED_DEPLOY_HOST}:/home/marce/qlmed/production/app/"
 
       - name: Stamp deploy metadata
         run: |
@@ -196,97 +225,39 @@ jobs:
           QLMED_BUILD_DEPLOYED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           QLMED_BUILD_SOURCE=github-actions
           EOF
+          rsync -e "ssh -o BatchMode=yes -o ConnectTimeout=30" -a \
+            /home/marce/qlmed/production/.deploy-meta.env \
+            "${QLMED_DEPLOY_HOST}:/home/marce/qlmed/production/.deploy-meta.env"
 
-      - name: Capture rollback image
-        run: |
-          if docker inspect qlmed-app >/dev/null 2>&1; then
-            current_image="$(docker inspect qlmed-app --format '{{.Image}}')"
-            docker tag "$current_image" "qlmed-app:rollback-${GITHUB_RUN_ID}"
-            # Tag estável para rollback MANUAL pós-deploy (a tag por run é
-            # consumida só pelo passo de rollback automático desta execução).
-            docker tag "$current_image" "qlmed-app:previous"
-            echo "ROLLBACK_IMAGE_AVAILABLE=1" >> "$GITHUB_ENV"
-          fi
+      - name: Capture rollback image on writer
+        run: bash scripts/qlmed-deploy-vps2.sh capture-rollback
 
-      - name: Deploy stack on server
+      - name: Build image on runner
         run: |
           set -a
           . /home/marce/qlmed/production/.deploy-meta.env
           set +a
-          compose=(docker compose \
+          docker compose \
             --project-name qlmed \
             --env-file /home/marce/qlmed/production/.env \
-            -f /home/marce/qlmed/production/docker-compose.yml)
-          "${compose[@]}" build qlmed-app
-          rollback_image="qlmed-app:rollback-${GITHUB_RUN_ID}"
-          rollback_available="${ROLLBACK_IMAGE_AVAILABLE:-0}"
-          if [[ "$rollback_available" == "1" ]]; then
-            docker image inspect "$rollback_image" >/dev/null
-          fi
-          restore_previous() {
-            if [[ "$rollback_available" == "1" ]]; then
-              QLMED_BUILD_COMMIT_SHA="rollback-${GITHUB_RUN_ID}" \
-                "${compose[@]}" up -d --no-build --force-recreate qlmed-app
-            fi
-          }
-          trap restore_previous ERR
-          "${compose[@]}" stop qlmed-app
-          "${compose[@]}" run --rm --no-deps qlmed-app sh -c '
-            set -eu
-            state=/tmp/qlmed-production-migration-window.json
-            node scripts/verify-production-migration-window.cjs before "$state"
-            node node_modules/prisma/build/index.js migrate deploy
-            node node_modules/prisma/build/index.js migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
-            node scripts/verify-production-migration-window.cjs after "$state"
-          '
-          "${compose[@]}" up -d --no-build qlmed-app
-          trap - ERR
+            -f /home/marce/qlmed/production/docker-compose.yml \
+            build qlmed-app
 
-      - name: Verify local health
-        run: |
-          for url in \
-            http://127.0.0.1:13000/api/health
-          do
-            for attempt in $(seq 1 30); do
-              if curl -fsS "$url" >/dev/null; then
-                break
-              fi
-              if [ "$attempt" -eq 30 ]; then
-                echo "Health check failed for $url" >&2
-                exit 1
-              fi
-              sleep 2
-            done
-          done
+      - name: Load image onto writer
+        run: bash scripts/qlmed-deploy-vps2.sh load-image "qlmed-app:${EXPECTED_SHA}"
+
+      - name: Release on writer
+        run: bash scripts/qlmed-deploy-vps2.sh release
+
+      - name: Verify writer health
+        run: bash scripts/qlmed-deploy-vps2.sh health 30
 
       - name: Verify deployed revision
         run: |
-          # Verifica pela IMAGEM em execução, localmente, e não pelo `commitSha`
-          # do /api/health público. Esse campo deixou de sair sem sessão
-          # (auditoria b177b07, OBS-003) e a versão anterior deste passo fazia
-          # `curl` anónimo → "got missing" → rollback de um deploy que tinha
-          # aplicado as migrações e subido saudável (run 33630947385).
-          #
-          # Duas provas, as duas locais: o id da imagem do container tem de ser
-          # o id da imagem construída para este SHA, E a tag tem de ser a do
-          # SHA. O env QLMED_BUILD_COMMIT_SHA NÃO serve: o stamp é gravado antes
-          # do `up`, e um container restaurado pelo rollback carrega o SHA novo
-          # no env enquanto corre a imagem antiga.
-          expected_sha="${EXPECTED_SHA}"
-          expected_id="$(docker image inspect "qlmed-app:${expected_sha}" --format '{{.Id}}')"
-          for attempt in $(seq 1 30); do
-            running_id="$(docker inspect qlmed-app --format '{{.Image}}' 2>/dev/null || true)"
-            running_tag="$(docker inspect qlmed-app --format '{{.Config.Image}}' 2>/dev/null || true)"
-            if [ "$running_id" = "$expected_id" ] && [ "$running_tag" = "qlmed-app:${expected_sha}" ]; then
-              echo "Deployed revision verified: ${running_tag} (${running_id})"
-              break
-            fi
-            if [ "$attempt" -eq 30 ]; then
-              echo "Revision check failed: expected qlmed-app:${expected_sha} (${expected_id}), running ${running_tag:-none} (${running_id:-none})" >&2
-              exit 1
-            fi
-            sleep 2
-          done
+          # Imagem em execução no writer, não o commitSha público (auditoria
+          # b177b07, OBS-003: curl anónimo → "got missing" → rollback de um
+          # deploy que já tinha migrado e subido saudável).
+          bash scripts/qlmed-deploy-vps2.sh verify-revision "${EXPECTED_SHA}"
 
       - name: Verify public endpoints
         id: app_verified
@@ -315,10 +286,7 @@ jobs:
           # Smoke 401 intermitente logo após o up não deve derrubar o app:
           # o hook é independente do container já verificado.
           for attempt in 1 2 3 4 5; do
-            if sudo -n -u marce -- \
-              /usr/bin/bash /usr/local/lib/qlmed/install-notification-outbox-cron.sh \
-              /home/marce/qlmed/production/app/scripts/notification-outbox-worker.py
-            then
+            if bash scripts/qlmed-deploy-vps2.sh install-outbox; then
               exit 0
             fi
             echo "Worker install attempt ${attempt} failed; retrying in 5s" >&2
@@ -329,13 +297,7 @@ jobs:
       - name: Preserve and verify manual rollback tag
         if: ${{ success() && env.ROLLBACK_IMAGE_AVAILABLE == '1' }}
         run: |
-          # Recria a tag manual a partir da referência protegida por run. Assim,
-          # mesmo que um prune remova qlmed-app:previous durante o deploy, ainda
-          # preservamos a imagem anterior antes de descartar a referência segura.
-          rollback_image="qlmed-app:rollback-${GITHUB_RUN_ID}"
-          docker image inspect "$rollback_image" >/dev/null
-          docker tag "$rollback_image" qlmed-app:previous
-          docker image inspect qlmed-app:previous >/dev/null \
+          bash scripts/qlmed-deploy-vps2.sh tag-previous \
             || { echo "::error::qlmed-app:previous ausente após deploy — rollback manual quebrado"; exit 1; }
           echo "qlmed-app:previous OK"
 
@@ -346,27 +308,13 @@ jobs:
 
       - name: Clean run-scoped rollback tag
         if: ${{ success() && env.ROLLBACK_IMAGE_AVAILABLE == '1' }}
-        run: |
-          # Só remove a referência segura depois de confirmar a tag manual. Se a
-          # verificação falhar, o passo de rollback ainda encontra esta imagem.
-          docker rmi "qlmed-app:rollback-${GITHUB_RUN_ID}" >/dev/null 2>&1 || true
+        run: bash scripts/qlmed-deploy-vps2.sh rmi-rollback
 
       - name: Roll back failed deployment
         if: ${{ failure() && env.ROLLBACK_IMAGE_AVAILABLE == '1' && steps.app_verified.outcome != 'success' }}
         run: |
-          # Este rollback reverte apenas a imagem do qlmed-app; não desfaz migração
-          # de banco que já tenha sido aplicada. A imagem anterior deve permanecer
-          # compatível com o schema expandido conforme docs/architecture/data.md.
-          QLMED_BUILD_COMMIT_SHA="rollback-${GITHUB_RUN_ID}" docker compose \
-            --project-name qlmed \
-            --env-file /home/marce/qlmed/production/.env \
-            -f /home/marce/qlmed/production/docker-compose.yml \
-            up -d --no-build --force-recreate qlmed-app
-          for _ in $(seq 1 60); do
-            if curl -fsS http://127.0.0.1:13000/api/health >/dev/null; then
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "Rollback health check failed" >&2
-          exit 1
+          # Este rollback reverte apenas a imagem do qlmed-app no writer; não
+          # desfaz migração de banco que já tenha sido aplicada. A imagem
+          # anterior deve permanecer compatível com o schema expandido conforme
+          # docs/architecture/data.md.
+          bash scripts/qlmed-deploy-vps2.sh rollback
