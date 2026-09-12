@@ -18,6 +18,7 @@ type DocRow = {
   validUntil: Date | null;
   validUntilSource: string | null;
   emitidoEm?: Date | null;
+  manufacturer?: string | null;
   removedAt: Date | null;
   renewalNotifiedAt: Date | null;
   alertedThresholds: number[];
@@ -1123,5 +1124,49 @@ describe('SPEC-042 — emissão descreve o conteúdo e não sobrevive a ele', ()
 
     const row = memory.docs.find((r) => r.oneDriveItemId === 'item-fgts-1');
     expect(ymd(row!.emitidoEm as Date | null)).toBe('2026-08-31');
+  });
+});
+
+describe('SPEC-042 — mesmo conteúdo não pisa correção do popup', () => {
+  const carta = {
+    folder: '7 - CARTA COMERCIALIZAÇÃO',
+    file: {
+      itemId: 'od-carta-manual',
+      name: 'Carta Comercialização TECHIMPORT.pdf',
+      size: 2048,
+      lastModifiedAt: NOW,
+    },
+  };
+
+  it('mesmo conteúdo preserva emitidoEm e manufacturer corrigidos', async () => {
+    const { runDocumentosIngest } = await import('@/lib/documentos/ingest');
+    pdfValidity.extractPdfPlainText.mockResolvedValue('Carta de comercialização TECHIMPORT');
+    pdfValidity.matchValidityFromText.mockReturnValue({
+      validUntil: '2027-03-01',
+      emitidoEm: '2026-03-01',
+      confidence: 'alta',
+      matchedLabel: 'Prazo',
+      textChars: 40,
+    });
+
+    await runDocumentosIngest(COMPANY, fakePort([carta]), NOW);
+    const first = memory.docs.find((r) => r.oneDriveItemId === 'od-carta-manual');
+    expect(ymd(first!.emitidoEm ?? null)).toBe('2026-03-01');
+
+    first!.emitidoEm = new Date('2026-01-15T00:00:00.000Z');
+    first!.manufacturer = 'CORRETO LTDA';
+
+    pdfValidity.matchValidityFromText.mockReturnValue({
+      validUntil: '2027-03-01',
+      emitidoEm: '2026-03-01',
+      confidence: 'alta',
+      matchedLabel: 'Prazo',
+      textChars: 40,
+    });
+    await runDocumentosIngest(COMPANY, fakePort([carta]), NOW);
+
+    const second = memory.docs.find((r) => r.oneDriveItemId === 'od-carta-manual');
+    expect(ymd(second!.emitidoEm ?? null)).toBe('2026-01-15');
+    expect(second!.manufacturer).toBe('CORRETO LTDA');
   });
 });

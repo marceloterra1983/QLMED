@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   CARTA_MAIL_MAX_PAGES,
   CARTA_MAIL_SEARCH,
@@ -8,6 +8,14 @@ import {
   type CartaMailPort,
 } from '@/lib/documentos/carta-mail';
 import { isCartaComercializacaoCandidate } from '@/lib/documentos/classify';
+
+const pdfText = vi.hoisted(() => ({
+  extractPdfPlainText: vi.fn(async (_data: unknown, _opts?: { ocrFallback?: boolean }) => ''),
+}));
+
+vi.mock('@/lib/documentos/pdf-validity', () => ({
+  extractPdfPlainText: pdfText.extractPdfPlainText,
+}));
 
 describe('CARTA_MAIL_SEARCH / maxPages', () => {
   it('busca carta+tema sem credenciamento solto; maxPages limitado', () => {
@@ -139,5 +147,41 @@ describe('scanCartaMailboxes', () => {
     const result = await scanCartaMailboxes('co1', { port });
     expect(result.failed).toBe(1);
     expect(calls).toBe(4);
+  });
+
+  it('anexo.pdf escaneado: OCR mesmo quando o nome não parece carta', async () => {
+    pdfText.extractPdfPlainText.mockImplementation(async (_data, opts?: { ocrFallback?: boolean }) => (
+      opts?.ocrFallback
+        ? 'Carta de comercialização TECHIMPORT autoriza a QL MED'
+        : ''
+    ));
+    const uploads: string[] = [];
+    const port: CartaMailPort = {
+      listMessages: async (mailbox) => (
+        mailbox === 'joseroberto@qlmed.com.br'
+          ? [{
+              graphMessageId: 'm-anexo',
+              internetMessageId: '<anexo@x>',
+              subject: 'Carta de autorização de comercialização',
+              receivedAt: new Date('2026-09-01T12:00:00.000Z'),
+              hasAttachments: true,
+            }]
+          : []
+      ),
+      listPdfs: async () => [{ name: 'anexo.pdf', content: Buffer.from('%PDF-1.4 scanned') }],
+      listExistingNames: async () => [],
+      upload: async (fileName) => {
+        uploads.push(fileName);
+        return { id: 'id-anexo', name: fileName };
+      },
+    };
+
+    const result = await scanCartaMailboxes('co1', { port });
+    expect(result.imported).toBe(1);
+    expect(uploads).toEqual(['anexo.pdf']);
+    expect(pdfText.extractPdfPlainText).toHaveBeenCalledWith(
+      expect.any(Buffer),
+      expect.objectContaining({ ocrFallback: true }),
+    );
   });
 });

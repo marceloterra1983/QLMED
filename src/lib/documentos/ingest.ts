@@ -144,6 +144,7 @@ type ExistingRow = {
   category: string | null;
   validUntil: Date | null;
   emitidoEm: Date | null;
+  manufacturer: string | null;
   removedAt: Date | null;
   oneDriveItemId: string;
   validUntilSource: string | null;
@@ -360,6 +361,7 @@ async function upsertItem(
   }
   const nextValidUntil = existing.validUntilSource === 'manual' ? existing.validUntil : input.validUntil;
   const validityChanged = toYmd(existing.validUntil) !== toYmd(nextValidUntil);
+  const fileChanged = conteudoMudou(existing.lastModifiedAt, input.lastModifiedAt);
   return prisma.companyDocument.update({
     where: { id: existing.id },
     data: {
@@ -375,19 +377,20 @@ async function upsertItem(
         ? {}
         : { validUntil: input.validUntil, validUntilSource: input.validUntilSource }),
       /**
-       * `emitidoEm` descreve o CONTEÚDO do ficheiro, não a linha. Se o conteúdo
-       * mudou (o `lastModifiedAt` do OneDrive mexeu) e desta vez não deu para
-       * ler a emissão, a data antiga passaria a acompanhar um documento que já
-       * não é o mesmo — e o popup mostraria emissão de uma versão ao lado da
-       * validade de outra. Nesse caso limpa-se; "não informado" é honesto,
-       * a data errada não é. Conteúdo intacto preserva o que já se sabia.
+       * `emitidoEm` descreve o CONTEÚDO do ficheiro. Ficheiro novo: lê de novo
+       * ou limpa. Mesmo ficheiro: não pisa uma data já gravada (correção no
+       * popup); só preenche buraco.
        */
-      ...(input.emitidoEm != null
-        ? { emitidoEm: input.emitidoEm }
-        : conteudoMudou(existing.lastModifiedAt, input.lastModifiedAt)
-          ? { emitidoEm: null }
+      ...(fileChanged
+        ? { emitidoEm: input.emitidoEm ?? null }
+        : existing.emitidoEm == null && input.emitidoEm != null
+          ? { emitidoEm: input.emitidoEm }
           : {}),
-      ...(input.manufacturer != null ? { manufacturer: input.manufacturer } : {}),
+      ...(fileChanged
+        ? (input.manufacturer != null ? { manufacturer: input.manufacturer } : {})
+        : existing.manufacturer == null && input.manufacturer != null
+          ? { manufacturer: input.manufacturer }
+          : {}),
       ...(validityChanged ? { alertedThresholds: [], renewalNotifiedAt: null } : {}),
     },
     select: { id: true, validUntil: true, renewalNotifiedAt: true },
@@ -407,6 +410,7 @@ async function ingestCompany(
       category: true,
       validUntil: true,
       emitidoEm: true,
+      manufacturer: true,
       // lastModifiedAt entra porque `conteudoMudou` o lê; o `as ExistingRow[]`
       // abaixo silencia o TypeScript, logo o compilador NÃO apanha um campo em
       // falta aqui — só a leitura da consulta apanha.
