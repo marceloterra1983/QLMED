@@ -258,10 +258,18 @@ export function buildStockProductTree(products: StockCatalogProduct[]): StockLin
     sub.products.push(product);
   }
 
+  // OUTROS/OUTROS (Spica) não tem grupo de verdade. Sem cabeçalho, o loose
+  // aparecia debaixo do último grupo fechado. Vira "Sem grupo" recolhível.
   for (const line of lines.values()) {
+    for (const group of line.groups) {
+      if (group.sameAsLine && group.subgroups.length === 0) {
+        group.sameAsLine = false;
+        group.name = 'Sem grupo';
+      }
+    }
     line.groups = [
-      ...line.groups.filter((group) => group.sameAsLine),
-      ...line.groups.filter((group) => !group.sameAsLine),
+      ...line.groups.filter((group) => group.name !== 'Sem grupo'),
+      ...line.groups.filter((group) => group.name === 'Sem grupo'),
     ];
   }
 
@@ -282,18 +290,11 @@ export function allStockCollapseKeys(products: StockCatalogProduct[]): Set<strin
 export const STOCK_FULL_EXPAND_LIMIT = 1000;
 
 export function leafStockCollapseKeys(products: StockCatalogProduct[]): Set<string> {
-  const linesWithNamedGroup = new Set<string>();
-  for (const p of products) {
-    if (!isStockGroupSameAsLine(p) || stockSubgroupKey(p)) {
-      linesWithNamedGroup.add(stockLineKey(p));
-    }
-  }
   const keys = new Set<string>();
   for (const p of products) {
     const sub = stockSubgroupKey(p);
     if (sub) keys.add(sub);
-    else if (!isStockGroupSameAsLine(p)) keys.add(stockGroupKey(p));
-    else if (!linesWithNamedGroup.has(stockLineKey(p))) keys.add(stockLineKey(p));
+    else keys.add(stockGroupKey(p));
   }
   return keys;
 }
