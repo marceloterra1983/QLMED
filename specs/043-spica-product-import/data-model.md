@@ -9,7 +9,7 @@
 | nome | string | Rel.Nome |
 | tipoRaw | string | Rel.Tipo |
 | tipo | string | tipoRaw sem `^\d+\s*[-–]\s*` → `ProductRegistry.productType` (**Linha**) |
-| subtipo | string | Rel.SubTipo → `ProductRegistry.productSubtype` (**Grupo**) |
+| subtipo | string | Rel.SubTipo → `ProductRegistry.productSubtype` (**Grupo**). Se SubTipo = Tipo (OUTROS/OUTROS), gravar `Sem grupo` — grupo igual à linha não tem cabeçalho e vaza na árvore. Subgrupo continua null. |
 | — | null | `ProductRegistry.productSubgroup` sempre null: Spica não tem 3º nível |
 | fabricante | string | Rel.Fabricante |
 | fornecedor | string? | Rel.Fornecedor |

@@ -184,6 +184,13 @@ export function normalizeSpicaRelRow(row: SpicaRelRowInput): SpicaNormalizedRow 
     (sit.sitTributaria === '000' && !!nomeTrib && /ISENTO/i.test(nomeTrib));
 
   const ipiSaida = parseBrPercent(row.ipiSaida);
+  const productType = tipo.invalid ? null : tipo.productType;
+  let productSubtype = tipo.invalid ? null : String(row.subtipo ?? '').trim() || null;
+  // Spica repete a linha no SubTipo quando não há grupo (OUTROS/OUTROS).
+  // Grupo igual à linha não tem cabeçalho e vaza debaixo do último grupo fechado.
+  if (productType && productSubtype && productType === productSubtype) {
+    productSubtype = 'Sem grupo';
+  }
   return {
     codigo,
     referencia,
@@ -191,8 +198,8 @@ export function normalizeSpicaRelRow(row: SpicaRelRowInput): SpicaNormalizedRow 
     nome: String(row.nome ?? '').trim(),
     // Spica Tipo → Linha; Spica SubTipo → Grupo; sem terceiro nível na origem → Subgrupo null.
     // Tipo inválido (fabricante no campo Tipo) → quarentena branda: sem Linha nem Grupo.
-    productType: tipo.invalid ? null : tipo.productType,
-    productSubtype: tipo.invalid ? null : String(row.subtipo ?? '').trim() || null,
+    productType,
+    productSubtype,
     productSubgroup: null,
     outOfLine: tipo.outOfLine,
     tipoInvalid: tipo.invalid,
