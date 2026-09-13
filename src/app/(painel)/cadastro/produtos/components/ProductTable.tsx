@@ -282,6 +282,7 @@ export default function ProductTable({
           return (
             <React.Fragment key={group.key}>
               {!group.sameAsLine && renderGroupHeader(group, grpCollapsed, inTable)}
+              {!grpCollapsed && group.loose.map((p) => renderProductRow(p, inTable))}
               {!grpCollapsed && group.subgroups.map((sub) => {
                 const subCollapsed = renderCollapsed.has(sub.key);
                 return (
@@ -291,7 +292,6 @@ export default function ProductTable({
                   </React.Fragment>
                 );
               })}
-              {!grpCollapsed && group.loose.map((p) => renderProductRow(p, inTable))}
             </React.Fragment>
           );
         })}

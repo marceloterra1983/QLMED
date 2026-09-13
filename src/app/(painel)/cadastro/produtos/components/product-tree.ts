@@ -81,6 +81,16 @@ export function buildProductTree(products: ProductRow[]): ProductLineNode[] {
     sub.products.push(product);
   }
 
+  // Produto sem grupo próprio (tipo = subtipo) fica logo abaixo da linha.
+  // Na ordem do servidor ele vinha depois dos grupos nomeados e parecia filho
+  // do último cabeçalho recolhido.
+  for (const line of lines.values()) {
+    line.groups = [
+      ...line.groups.filter((group) => group.sameAsLine),
+      ...line.groups.filter((group) => !group.sameAsLine),
+    ];
+  }
+
   return Array.from(lines.values());
 }
 

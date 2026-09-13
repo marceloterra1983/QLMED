@@ -285,8 +285,16 @@ function matchByDescription(item: LinkItemInput, index: RegistryIndex): MatchDec
  * prefixo) → S3 (EAN) → S4 (ANVISA) → S5 (ref embutida / leading / trigram)
  * → S7 (contenção de descrição + NCM) → S6 (memória automática ≥ 0,9).
  * A memória MANUAL vem primeiro porque é decisão humana explícita.
+ *
+ * S1 só corre quando o emitente é a própria empresa (devolução / nota própria).
+ * cProd de fornecedor que coincide com o codigo Spica não é evidência.
  */
-export function matchItem(item: LinkItemInput, index: RegistryIndex, memory?: LinkMemory): MatchDecision | null {
+export function matchItem(
+  item: LinkItemInput,
+  index: RegistryIndex,
+  memory?: LinkMemory,
+  context?: { ownCnpj?: string | null },
+): MatchDecision | null {
   const key = memoryKey(item.supplierCnpj, item.supplierCode);
   const remembered = memory?.get(key);
   if (remembered && remembered.strategy === 'MANUAL' && remembered.productId && index.byId.has(remembered.productId)) {
@@ -298,8 +306,11 @@ export function matchItem(item: LinkItemInput, index: RegistryIndex, memory?: Li
   if (skipped) return decideSkip(skipped);
 
   const raw = (item.supplierCode || '').trim();
-  const s1 = unique(index.byCodigo.get(raw));
-  if (s1) return decide(index, s1, 'S1', 1);
+  const ownCnpj = normalizeCnpj(context?.ownCnpj);
+  if (ownCnpj && normalizeCnpj(item.supplierCnpj) === ownCnpj) {
+    const s1 = unique(index.byCodigo.get(raw));
+    if (s1) return decide(index, s1, 'S1', 1);
+  }
 
   const norm = normalizeSupplierCode(raw);
   if (norm) {

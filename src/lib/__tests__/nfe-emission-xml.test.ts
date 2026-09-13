@@ -74,9 +74,19 @@ describe('nfe xml builder', () => {
     expect(xml).not.toContain('<med>');
     expect(xml).not.toContain('<cProdANVISA>');
     expect(xml).toContain('NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO');
+    expect(xml).toContain('<vUnCom>10.005</vUnCom>');
+    expect(xml).toContain('<vProd>20.01</vProd>');
     expect(xml).toContain('<vNF>20.01</vNF>');
     expect(xml).toContain('<mod>55</mod>');
     expect(xml).toContain('<modFrete>9</modFrete>');
+  });
+
+  it('vProd usa o vUnCom gravado, não o preço cru arredondado à parte', () => {
+    const xml = buildUnsignedNfeXml(sampleDraft({
+      items: [{ ...sampleDraft().items[0], qCom: '100', vUnCom: '0.333' }],
+    }));
+    expect(xml).toContain('<vUnCom>0.333</vUnCom>');
+    expect(xml).toContain('<vProd>33.30</vProd>');
   });
 
   it('ANVISA + vPmc gera <med> completo (cProdANVISA e vPMC)', () => {

@@ -6,6 +6,25 @@ import { createLogger } from '@/lib/logger';
 
 const log = createLogger('product-aggregate-rebuild');
 
+/**
+ * Zera só os totais que este rebuild recompõe pela productKey do XML.
+ * Data, nota, fornecedor e preço da última compra ficam: o incremental grava
+ * esses campos por EAN/código, e apagá-los aqui some com a compra na tela
+ * sem a nota conseguir repor (a nota já foi marcada como incluída no rebuild).
+ */
+export function unmatchedAggregateReset(input: { searchText: string; computedAt: Date }) {
+  return {
+    aggTotalQuantity: 0,
+    aggTotalValue: 0,
+    aggInvoiceCount: 0,
+    aggAveragePrice: 0,
+    aggResaleQuantity: 0,
+    aggComputedAt: input.computedAt,
+    aggSearchText: input.searchText,
+    updatedAt: new Date(),
+  };
+}
+
 const WRITE_TRANSACTION_TIMEOUT_MS = 15 * 60 * 1000;
 
 export interface ProductAggregateRebuildResult {
@@ -135,21 +154,8 @@ export async function rebuildProductAggregatesForCompany(
         for (const row of stale) {
           await tx.productRegistry.update({
             where: { id: row.id },
-            data: {
-              aggTotalQuantity: 0,
-              aggTotalValue: 0,
-              aggInvoiceCount: 0,
-              aggLastPrice: 0,
-              aggAveragePrice: 0,
-              aggLastIssueDate: null,
-              aggLastSupplierName: null,
-              aggLastSupplierCnpj: null,
-              aggLastInvoiceNumber: null,
-              aggLastSaleDate: null,
-              aggLastSalePrice: null,
-              aggResaleQuantity: 0,
-              aggComputedAt: computedAt,
-              aggSearchText:
+            data: unmatchedAggregateReset({
+              searchText:
                 row.aggSearchText ??
                 computeSearchText({
                   code: row.code,
@@ -158,8 +164,8 @@ export async function rebuildProductAggregatesForCompany(
                   anvisa: row.anvisaCode,
                   lastSupplierName: null,
                 }),
-              updatedAt: new Date(),
-            },
+              computedAt,
+            }),
           });
         }
 

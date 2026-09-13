@@ -95,6 +95,17 @@ export default function ProdutosPage() {
   );
   const treeFilterActive = Boolean(search || typeFilter || subtypeFilter || subgroupFilter || lineStatusFilter !== 'all');
 
+  // Na visão Linha a busca é local. Sem isto o contador cai e as linhas
+  // continuam atrás de "Clique para expandir".
+  useEffect(() => {
+    if (!isTreeView || products.length === 0) return;
+    if (treeFilterActive) {
+      setCollapsedGroups(new Set());
+      return;
+    }
+    setCollapsedGroups(allCollapseKeys(products, 'productType'));
+  }, [isTreeView, treeFilterActive, search, typeFilter, subtypeFilter, subgroupFilter, lineStatusFilter, products]);
+
 
   // --- action states ---
   const [settingsOpen, setSettingsOpen] = useState(false);

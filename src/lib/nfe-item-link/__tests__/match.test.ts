@@ -34,8 +34,12 @@ function item(over: Partial<LinkItemInput>): LinkItemInput {
 }
 
 describe('cascata S1..S7', () => {
-  it('S1: cProd igual ao código Spica (devolução/nota emitida pela Spica)', () => {
-    expect(matchItem(item({ supplierCode: '005079' }), index)).toMatchObject({ productId: 'p-icv', strategy: 'S1', confidence: 1, codigo: '005079' });
+  it('S1: cProd igual ao código Spica só na nota da própria empresa', () => {
+    const own = '11222333000181';
+    expect(matchItem(item({ supplierCnpj: own, supplierCode: '005079' }), index, undefined, { ownCnpj: own }))
+      .toMatchObject({ productId: 'p-icv', strategy: 'S1', confidence: 1, codigo: '005079' });
+    expect(matchItem(item({ supplierCnpj: '66877184000180', supplierCode: '005079' }), index, undefined, { ownCnpj: own })?.strategy)
+      .not.toBe('S1');
   });
 
   it('S2 exato normalizado: hífen/espaço/caixa não importam', () => {

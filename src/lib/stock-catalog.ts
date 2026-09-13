@@ -180,13 +180,9 @@ export function filterStockProducts(
   } = {},
 ): StockCatalogProduct[] {
   const q = opts.q?.trim().toLowerCase();
-  const minQty = opts.minQty ?? 0;
   return products.filter((p) => {
-    if (opts.locationType === 'CD' && p.qtyCd <= minQty && minQty === 0 && opts.minQty != null) {
-      /* keep zeros in Controle unless minQty asked */
-    }
-    if (opts.locationType === 'CD' && minQty > 0 && p.qtyCd <= 0) return false;
-    if (opts.locationType === 'CUSTOMER' && minQty > 0 && p.qtyCustomer <= 0) return false;
+    if (opts.locationType === 'CD' && p.qtyCd <= 0) return false;
+    if (opts.locationType === 'CUSTOMER' && p.qtyCustomer <= 0) return false;
     if (opts.minQty != null && opts.minQty > 0) {
       const qty =
         opts.locationType === 'CD'
@@ -262,6 +258,13 @@ export function buildStockProductTree(products: StockCatalogProduct[]): StockLin
     sub.products.push(product);
   }
 
+  for (const line of lines.values()) {
+    line.groups = [
+      ...line.groups.filter((group) => group.sameAsLine),
+      ...line.groups.filter((group) => !group.sameAsLine),
+    ];
+  }
+
   return Array.from(lines.values());
 }
 
@@ -279,12 +282,18 @@ export function allStockCollapseKeys(products: StockCatalogProduct[]): Set<strin
 export const STOCK_FULL_EXPAND_LIMIT = 1000;
 
 export function leafStockCollapseKeys(products: StockCatalogProduct[]): Set<string> {
+  const linesWithNamedGroup = new Set<string>();
+  for (const p of products) {
+    if (!isStockGroupSameAsLine(p) || stockSubgroupKey(p)) {
+      linesWithNamedGroup.add(stockLineKey(p));
+    }
+  }
   const keys = new Set<string>();
   for (const p of products) {
     const sub = stockSubgroupKey(p);
     if (sub) keys.add(sub);
     else if (!isStockGroupSameAsLine(p)) keys.add(stockGroupKey(p));
-    else keys.add(stockLineKey(p));
+    else if (!linesWithNamedGroup.has(stockLineKey(p))) keys.add(stockLineKey(p));
   }
   return keys;
 }

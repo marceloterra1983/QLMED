@@ -6,7 +6,7 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { nfeEmissionPayloadSchema } from '@/lib/nfe-emission/schema';
 import { getSaidaOperation } from '@/lib/nfe-emission/operations';
-import { draftTotalValue } from '@/lib/nfe-emission/xml-builder';
+import { storedEmissionTotal } from '@/lib/nfe-emission/xml-builder';
 import { assertDestinatarioClientePj } from '@/lib/nfe-emission/types';
 
 async function customerCnpjs(companyId: string): Promise<Set<string>> {
@@ -80,7 +80,7 @@ export async function POST(req: Request) {
         destCnpj: payload.destCnpj,
         destName: payload.destName || payload.destCnpj,
         payload,
-        totalValue: new Prisma.Decimal(draftTotalValue(payload.items)),
+        totalValue: new Prisma.Decimal(storedEmissionTotal(payload)),
         createdByUserId: userId,
       },
     });

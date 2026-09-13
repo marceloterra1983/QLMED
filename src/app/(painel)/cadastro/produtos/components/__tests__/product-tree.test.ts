@@ -52,6 +52,17 @@ describe('buildProductTree', () => {
     expect(semLinha.groups[0].loose.map((p) => p.key)).toEqual(['n1']);
   });
 
+  it('coloca o grupo igual à linha antes dos grupos nomeados, mesmo se o servidor entregou o contrário', () => {
+    const rows: ProductRow[] = [
+      row({ key: 'g1', productType: 'OUTROS', productSubtype: 'CATETER DE ACESSO' }),
+      row({ key: 'loose', productType: 'OUTROS', productSubtype: 'OUTROS' }),
+    ];
+    const tree = buildProductTree(rows);
+    expect(tree[0].groups.map((g) => g.name)).toEqual(['OUTROS', 'CATETER DE ACESSO']);
+    expect(tree[0].groups[0].sameAsLine).toBe(true);
+    expect(tree[0].groups[0].loose.map((p) => p.key)).toEqual(['loose']);
+  });
+
   it('visibleTreeProductKeys respeita linha, grupo (exceto sameAsLine) e subgrupo recolhidos', () => {
     const tree = buildProductTree(catalog);
 
@@ -107,5 +118,18 @@ describe('expandCollapseKeys (Expandir / busca)', () => {
     // OUTROS/OUTROS não tem cabeçalho de grupo: só recolher a linha impede as 334 linhas.
     expect(keys.has('line:OUTROS')).toBe(true);
     expect(visibleTreeProductKeys(buildProductTree(big), keys)).toEqual([]);
+  });
+
+  it('linha mista não recolhe a linha inteira por causa de um produto sem grupo', () => {
+    const mixed: ProductRow[] = [
+      ...Array.from({ length: FULL_EXPAND_LIMIT }, (_, i) =>
+        row({ key: `n${i}`, productType: 'OUTROS', productSubtype: 'CATETER DE ACESSO', productSubgroup: null }),
+      ),
+      row({ key: 'loose', productType: 'OUTROS', productSubtype: 'OUTROS', productSubgroup: null }),
+    ];
+    const keys = expandCollapseKeys(mixed, 'productType');
+    expect(keys.has('group:OUTROS|CATETER DE ACESSO')).toBe(true);
+    expect(keys.has('line:OUTROS')).toBe(false);
+    expect(visibleTreeProductKeys(buildProductTree(mixed), keys)).toEqual(['loose']);
   });
 });

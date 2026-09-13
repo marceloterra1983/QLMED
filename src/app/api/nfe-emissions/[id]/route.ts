@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { nfeEmissionPayloadSchema } from '@/lib/nfe-emission/schema';
-import { draftTotalValue } from '@/lib/nfe-emission/xml-builder';
+import { storedEmissionTotal } from '@/lib/nfe-emission/xml-builder';
 import { assertDestinatarioClientePj } from '@/lib/nfe-emission/types';
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -73,7 +73,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         destCnpj: payload.destCnpj,
         destName: payload.destName || existing.destName,
         payload,
-        totalValue: new Prisma.Decimal(draftTotalValue(payload.items)),
+        totalValue: new Prisma.Decimal(storedEmissionTotal(payload)),
         sefazStat: null,
         sefazMotivo: null,
         number: null,

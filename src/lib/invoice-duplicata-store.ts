@@ -186,8 +186,7 @@ export async function extractAndStoreDuplicatas(
   companyId: string,
   xmlContent: string,
 ): Promise<void> {
-  try {
-    const duplicatas = await extractDuplicatasFromXml(xmlContent);
+  const duplicatas = await extractDuplicatasFromXml(xmlContent);
 
     if (duplicatas.length === 0) {
       await prisma.invoiceDuplicata.createMany({
@@ -223,9 +222,6 @@ export async function extractAndStoreDuplicatas(
         })),
       );
     }
-  } catch {
-    // Falha não-fatal no processamento de duplicatas
-  }
 }
 
 // ── Backfill ──
