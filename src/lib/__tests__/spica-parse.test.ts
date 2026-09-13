@@ -122,6 +122,29 @@ describe('spica/parse', () => {
     expect(row.productSubgroup).toBeNull();
   });
 
+  it('SubTipo igual ao Tipo vira Sem grupo, subgrupo continua vazio', () => {
+    const row = normalizeSpicaRelRow({
+      codigo: '007493',
+      referencia: '40449',
+      nome: 'CATETER UMBILICAL 3,5FR PVC POLYMED',
+      tipo: '4 - OUTROS',
+      subtipo: 'OUTROS',
+      fabricante: '3M',
+      instrumental: 'Não',
+      rvs: '',
+      ncm: '',
+      sitTributaria: '000',
+      nomeTributacao: '',
+      icms: '0,00',
+      pis: '0,65',
+      cofins: '3,00',
+      ipiEntrada: '0,00',
+    });
+    expect(row.productType).toBe('OUTROS');
+    expect(row.productSubtype).toBe('Sem grupo');
+    expect(row.productSubgroup).toBeNull();
+  });
+
   it('ref _ e tipo invalido + inconsistencia CST/ICMS', () => {
     const row = normalizeSpicaRelRow({
       codigo: '000691',
