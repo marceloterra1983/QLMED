@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { buildCanonicalSpicaProductKey } from '@/lib/spica/import-service';
+import { buildCanonicalSpicaProductKey, resolveSpicaOutOfLine } from '@/lib/spica/import-service';
 
 describe('spica/import-service', () => {
+  it('sem nota de compra fica fora de linha, mesmo que a planilha diga em linha', () => {
+    expect(resolveSpicaOutOfLine(false, false)).toBe(true);
+    expect(resolveSpicaOutOfLine(false, true)).toBe(false);
+    expect(resolveSpicaOutOfLine(true, true)).toBe(true);
+  });
+
   it('gera chave CODE:REF::UNIT:UN para referencias unicas e validas', () => {
     const key = buildCanonicalSpicaProductKey('BBXX01A-RK', '007550', true);
     expect(key).toBe('CODE:BBXX01A-RK::UNIT:UN');
