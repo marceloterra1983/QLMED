@@ -22,8 +22,9 @@ export function productSubgroupKey(
 }
 
 /**
- * Grupo igual à Linha (Tipo Spica preenche os dois): não há cabeçalho de grupo,
- * logo a chave `group:` desse produto nunca conta como recolhida.
+ * Tipo Spica preenche Linha e Grupo com o mesmo nome (OUTROS/OUTROS). A árvore
+ * promove esse bucket sem subgrupo a "Sem grupo". Com subgrupo, o cabeçalho de
+ * grupo continua omitido — o subgrupo é o nível que recolhe.
  */
 export function isGroupSameAsLine(
   product: Pick<ProductRow, 'productType' | 'productSubtype'>,
@@ -66,8 +67,9 @@ export function isProductRowVisible(
 ): boolean {
   if (sortBy === 'productType') {
     if (collapsed.has(productLineKey(product))) return false;
-    if (!isGroupSameAsLine(product) && collapsed.has(productGroupKey(product, sortBy))) return false;
     const sub = productSubgroupKey(product);
+    const groupHasHeader = !isGroupSameAsLine(product) || !sub;
+    if (groupHasHeader && collapsed.has(productGroupKey(product, sortBy))) return false;
     if (sub && collapsed.has(sub)) return false;
     return true;
   }
@@ -115,23 +117,16 @@ export function safeCollapseKeys(
 }
 
 /**
- * Chaves do último nível de agrupamento de cada produto (subgrupo; sem subgrupo,
- * o grupo; grupo == linha, a linha). Com essas chaves recolhidas nenhum produto
- * renderiza, mas toda a estrutura acima fica visível.
+ * Chaves do último nível de agrupamento (subgrupo, ou o grupo — inclusive
+ * OUTROS/OUTROS promovido a Sem grupo). Com elas recolhidas nenhum produto
+ * renderiza, mas linha e cabeçalhos acima ficam visíveis.
  */
 export function leafCollapseKeys(products: ProductRow[]): Set<string> {
-  const linesWithNamedGroup = new Set<string>();
-  for (const p of products) {
-    if (!isGroupSameAsLine(p) || productSubgroupKey(p)) {
-      linesWithNamedGroup.add(productLineKey(p));
-    }
-  }
   const keys = new Set<string>();
   for (const p of products) {
     const sub = productSubgroupKey(p);
     if (sub) keys.add(sub);
-    else if (!isGroupSameAsLine(p)) keys.add(productGroupKey(p, 'productType'));
-    else if (!linesWithNamedGroup.has(productLineKey(p))) keys.add(productLineKey(p));
+    else keys.add(productGroupKey(p, 'productType'));
   }
   return keys;
 }

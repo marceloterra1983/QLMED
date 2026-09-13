@@ -81,13 +81,19 @@ export function buildProductTree(products: ProductRow[]): ProductLineNode[] {
     sub.products.push(product);
   }
 
-  // Produto sem grupo próprio (tipo = subtipo) fica logo abaixo da linha.
-  // Na ordem do servidor ele vinha depois dos grupos nomeados e parecia filho
-  // do último cabeçalho recolhido.
+  // Spica grava Linha e Grupo com o mesmo nome quando não há grupo de verdade
+  // (OUTROS/OUTROS). Sem cabeçalho, os produtos caíam debaixo do último grupo
+  // fechado. Vira "Sem grupo", recolhível, e fica no fim da linha.
   for (const line of lines.values()) {
+    for (const group of line.groups) {
+      if (group.sameAsLine && group.subgroups.length === 0) {
+        group.sameAsLine = false;
+        group.name = 'Sem grupo';
+      }
+    }
     line.groups = [
-      ...line.groups.filter((group) => group.sameAsLine),
-      ...line.groups.filter((group) => !group.sameAsLine),
+      ...line.groups.filter((group) => group.name !== 'Sem grupo'),
+      ...line.groups.filter((group) => group.name === 'Sem grupo'),
     ];
   }
 

@@ -29,8 +29,11 @@ describe('árvore de estoque', () => {
       product({ productCodigo: 'G1', productSubtype: 'CATETER DE ACESSO', qtyCd: 1, qtyTotal: 1 }),
       product({ productCodigo: 'L1', productSubtype: 'OUTROS', qtyCd: 1, qtyTotal: 1 }),
     ]);
-    expect(tree[0].groups.map((g) => g.name)).toEqual(['OUTROS', 'CATETER DE ACESSO']);
-    expect(tree[0].groups[0].loose.map((p) => p.productCodigo)).toEqual(['L1']);
+    expect(tree[0].groups.map((g) => [g.name, g.sameAsLine])).toEqual([
+      ['CATETER DE ACESSO', false],
+      ['Sem grupo', false],
+    ]);
+    expect(tree[0].groups[1].loose.map((p) => p.productCodigo)).toEqual(['L1']);
   });
 });
 

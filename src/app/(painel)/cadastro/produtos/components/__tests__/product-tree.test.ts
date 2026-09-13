@@ -52,15 +52,20 @@ describe('buildProductTree', () => {
     expect(semLinha.groups[0].loose.map((p) => p.key)).toEqual(['n1']);
   });
 
-  it('coloca o grupo igual à linha antes dos grupos nomeados, mesmo se o servidor entregou o contrário', () => {
+  it('linha igual ao grupo vira Sem grupo recolhível, depois dos grupos nomeados', () => {
     const rows: ProductRow[] = [
       row({ key: 'g1', productType: 'OUTROS', productSubtype: 'CATETER DE ACESSO' }),
       row({ key: 'loose', productType: 'OUTROS', productSubtype: 'OUTROS' }),
     ];
     const tree = buildProductTree(rows);
-    expect(tree[0].groups.map((g) => g.name)).toEqual(['OUTROS', 'CATETER DE ACESSO']);
-    expect(tree[0].groups[0].sameAsLine).toBe(true);
-    expect(tree[0].groups[0].loose.map((p) => p.key)).toEqual(['loose']);
+    expect(tree[0].groups.map((g) => [g.name, g.sameAsLine])).toEqual([
+      ['CATETER DE ACESSO', false],
+      ['Sem grupo', false],
+    ]);
+    expect(tree[0].groups[1].key).toBe('group:OUTROS|OUTROS');
+    expect(tree[0].groups[1].loose.map((p) => p.key)).toEqual(['loose']);
+    const collapsed = new Set(['group:OUTROS|OUTROS', 'group:OUTROS|CATETER DE ACESSO']);
+    expect(visibleTreeProductKeys(tree, collapsed)).toEqual([]);
   });
 
   it('visibleTreeProductKeys respeita linha, grupo (exceto sameAsLine) e subgrupo recolhidos', () => {
@@ -102,7 +107,7 @@ describe('expandCollapseKeys (Expandir / busca)', () => {
     expect(visibleTreeProductKeys(buildProductTree(big), keys)).toEqual([]);
   });
 
-  it('sem subgrupo (Spica: Tipo=Linha, SubTipo=Grupo) recolhe o grupo; grupo==linha recolhe a linha', () => {
+  it('sem subgrupo recolhe o grupo, inclusive OUTROS/OUTROS promovido a Sem grupo', () => {
     const big: ProductRow[] = Array.from({ length: FULL_EXPAND_LIMIT + 1 }, (_, i) =>
       row({
         key: `k${i}`,
@@ -115,8 +120,9 @@ describe('expandCollapseKeys (Expandir / busca)', () => {
     expect(keys.has('group:CARDIACA|ALEXIS')).toBe(true);
     expect(keys.has('group:CARDIACA|CANULAS - EDWARDS')).toBe(true);
     expect(keys.has('line:CARDIACA')).toBe(false);
-    // OUTROS/OUTROS não tem cabeçalho de grupo: só recolher a linha impede as 334 linhas.
-    expect(keys.has('line:OUTROS')).toBe(true);
+    // OUTROS/OUTROS vira Sem grupo recolhível; a linha fica aberta.
+    expect(keys.has('group:OUTROS|OUTROS')).toBe(true);
+    expect(keys.has('line:OUTROS')).toBe(false);
     expect(visibleTreeProductKeys(buildProductTree(big), keys)).toEqual([]);
   });
 
@@ -129,7 +135,11 @@ describe('expandCollapseKeys (Expandir / busca)', () => {
     ];
     const keys = expandCollapseKeys(mixed, 'productType');
     expect(keys.has('group:OUTROS|CATETER DE ACESSO')).toBe(true);
+    expect(keys.has('group:OUTROS|OUTROS')).toBe(true);
     expect(keys.has('line:OUTROS')).toBe(false);
-    expect(visibleTreeProductKeys(buildProductTree(mixed), keys)).toEqual(['loose']);
+    const tree = buildProductTree(mixed);
+    expect(tree[0].groups.some((g) => g.name === 'Sem grupo' && !g.sameAsLine)).toBe(true);
+    expect(visibleTreeProductKeys(tree, keys)).not.toContain('loose');
+    expect(visibleTreeProductKeys(tree, new Set(['group:OUTROS|OUTROS']))).not.toContain('loose');
   });
 });

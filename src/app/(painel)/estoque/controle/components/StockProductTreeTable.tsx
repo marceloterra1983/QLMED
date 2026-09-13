@@ -9,7 +9,6 @@ import {
   allStockCollapseKeys,
   buildStockProductTree,
   expandStockCollapseKeys,
-  isStockGroupSameAsLine,
   type StockCatalogProduct,
   type StockGroupNode,
   type StockLineNode,
@@ -167,7 +166,7 @@ export default function StockProductTreeTable({
     );
     if (lineClosed) continue;
     for (const group of line.groups) {
-      const skipGroupHeader = group.sameAsLine || isStockGroupSameAsLine(group.products[0] ?? { productType: line.name, productSubtype: group.name });
+      const skipGroupHeader = group.sameAsLine;
       const groupClosed = !skipGroupHeader && collapsed.has(group.key);
       if (!skipGroupHeader) {
         rows.push(

@@ -49,6 +49,11 @@ describe('product-group-visibility', () => {
     expect(anyProductRowVisible(page, 'productType', collapsed)).toBe(true);
   });
 
+  it('OUTROS/OUTROS recolhido no grupo esconde o bucket Sem grupo', () => {
+    const outros = row({ key: 'o', productType: 'OUTROS', productSubtype: 'OUTROS', codigo: '007493' });
+    expect(anyProductRowVisible([outros], 'productType', new Set(['group:OUTROS|OUTROS']))).toBe(false);
+  });
+
   it('subgrupo recolhido esconde produtos daquele subgrupo', () => {
     const collapsed = new Set(['sub:CARDIACA|STENTS|ALEXIS']);
     expect(anyProductRowVisible(page, 'productType', collapsed)).toBe(true);
