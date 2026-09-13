@@ -12,6 +12,15 @@ export interface SpicaImportSummary {
   warningsCount: number;
 }
 
+/**
+ * Em linha só com nota de compra identificada no cadastro. A planilha Spica
+ * não traz essa nota; sem data e número, o item fica fora de linha mesmo que
+ * o Tipo não diga "FORA DE LINHA".
+ */
+export function resolveSpicaOutOfLine(sheetOutOfLine: boolean, hasPurchaseInvoice: boolean): boolean {
+  return sheetOutOfLine || !hasPurchaseInvoice;
+}
+
 export function buildCanonicalSpicaProductKey(ref: string, codigo: string, isRefUnique: boolean): string {
   const normRef = normalizeToken(ref);
   if (normRef && normRef !== '_' && normRef !== '-' && isRefUnique) {
@@ -56,6 +65,8 @@ export async function processSpicaRows(
       anvisaSource: true,
       productRefs: true,
       fiscalSitTributaria: true,
+      aggLastIssueDate: true,
+      aggLastInvoiceNumber: true,
     },
   });
 
@@ -109,7 +120,10 @@ export async function processSpicaRows(
         productType: norm.productType,
         productSubtype: norm.productSubtype,
         productSubgroup: norm.productSubgroup,
-        outOfLine: norm.outOfLine,
+        outOfLine: resolveSpicaOutOfLine(
+          norm.outOfLine,
+          Boolean(match.aggLastIssueDate) && Boolean(match.aggLastInvoiceNumber?.trim()),
+        ),
         instrumental: norm.instrumental,
         manufacturerShortName: norm.manufacturerShortName,
         defaultSupplier: norm.defaultSupplier,
@@ -163,7 +177,7 @@ export async function processSpicaRows(
         productType: norm.productType,
         productSubtype: norm.productSubtype,
         productSubgroup: norm.productSubgroup,
-        outOfLine: norm.outOfLine,
+        outOfLine: resolveSpicaOutOfLine(norm.outOfLine, false),
         instrumental: norm.instrumental,
         manufacturerShortName: norm.manufacturerShortName,
         defaultSupplier: norm.defaultSupplier,
