@@ -50,14 +50,44 @@ function qty(value: string): string {
   return new Decimal(value).toDecimalPlaces(4, Decimal.ROUND_HALF_UP).toFixed(4);
 }
 
+/**
+ * vUnCom no XML: até 4 casas (o schema já aceita). Forçar 2 casas faz a SEFAZ
+ * recalcular vProd com o preço arredondado e rejeitar 629 (100 × 0,333 vira
+ * 33,30 no total e 33,00 na conta dela).
+ */
+export function formatEmittedUnitPrice(value: string | number): string {
+  const rounded = new Decimal(value).toDecimalPlaces(4, Decimal.ROUND_HALF_UP);
+  const raw = rounded.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
+  const [int, frac = ''] = raw.split('.');
+  if (frac.length >= 2) return `${int}.${frac}`;
+  return `${int}.${frac.padEnd(2, '0')}`;
+}
+
+/** vProd = qCom × vUnCom gravado, half-up em 2 casas. Tem de ser o mesmo número do XML. */
+export function itemProductValue(item: Pick<NfeEmissionItem, 'qCom' | 'vUnCom'>): string {
+  const unit = new Decimal(formatEmittedUnitPrice(item.vUnCom));
+  const quantity = new Decimal(item.qCom).toDecimalPlaces(4, Decimal.ROUND_HALF_UP);
+  return unit.mul(quantity).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
+}
+
 function itemGross(item: NfeEmissionItem): number {
-  const gross = new Decimal(item.qCom).mul(item.vUnCom).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+  const gross = new Decimal(itemProductValue(item));
   const desc = item.vDesc ? new Decimal(item.vDesc) : new Decimal(0);
   return gross.minus(desc).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber();
 }
 
 export function draftTotalValue(items: NfeEmissionItem[]): string {
   return formatMoneyDecimal(new Decimal(sumMoney(items.map(itemGross))));
+}
+
+/** Total persistido do rascunho: itens menos desconto, mais frete/seguro/outras. */
+export function storedEmissionTotal(payload: {
+  items: NfeEmissionItem[];
+  vFrete?: string;
+  vSeg?: string;
+  vOutro?: string;
+}): string {
+  return draftDocumentTotal(payload.items, payload);
 }
 
 export function draftDocumentTotal(
@@ -159,7 +189,8 @@ function detXml(item: NfeEmissionItem, nItem: number, crt: string): {
   ibs: IbsItem;
   vItem: string;
 } {
-  const vProd = money(new Decimal(item.qCom).mul(item.vUnCom).toNumber());
+  const vUn = formatEmittedUnitPrice(item.vUnCom);
+  const vProd = itemProductValue(item);
   const vDescAmt = item.vDesc && Number(item.vDesc) > 0 ? money(item.vDesc) : '';
   const vDesc = vDescAmt ? `<vDesc>${vDescAmt}</vDesc>` : '';
   const vBc = money(new Decimal(vProd).minus(vDescAmt || 0).toNumber());
@@ -183,7 +214,7 @@ function detXml(item: NfeEmissionItem, nItem: number, crt: string): {
     qCom: item.qCom,
   });
   return {
-    xml: `<det nItem="${nItem}"><prod><cProd>${esc(item.cProd)}</cProd><cEAN>${ean}</cEAN><xProd>${esc(item.xProd)}</xProd><NCM>${esc(item.ncm)}</NCM>${cest}<CFOP>${esc(item.cfop)}</CFOP><uCom>${esc(item.uCom)}</uCom><qCom>${qty(item.qCom)}</qCom><vUnCom>${money(item.vUnCom)}</vUnCom><vProd>${vProd}</vProd><cEANTrib>${ean}</cEANTrib><uTrib>${esc(item.uCom)}</uTrib><qTrib>${qty(item.qCom)}</qTrib><vUnTrib>${money(item.vUnCom)}</vUnTrib>${vDesc}<indTot>1</indTot>${rastro}${med}</prod><imposto>${icmsXml(item, crt, vProd)}${pis.xml}${ibsCbsItemXml(ibs)}</imposto>${infAdProdXml(item)}<vItem>${vBc}</vItem></det>`,
+    xml: `<det nItem="${nItem}"><prod><cProd>${esc(item.cProd)}</cProd><cEAN>${ean}</cEAN><xProd>${esc(item.xProd)}</xProd><NCM>${esc(item.ncm)}</NCM>${cest}<CFOP>${esc(item.cfop)}</CFOP><uCom>${esc(item.uCom)}</uCom><qCom>${qty(item.qCom)}</qCom><vUnCom>${vUn}</vUnCom><vProd>${vProd}</vProd><cEANTrib>${ean}</cEANTrib><uTrib>${esc(item.uCom)}</uTrib><qTrib>${qty(item.qCom)}</qTrib><vUnTrib>${vUn}</vUnTrib>${vDesc}<indTot>1</indTot>${rastro}${med}</prod><imposto>${icmsXml(item, crt, vProd)}${pis.xml}${ibsCbsItemXml(ibs)}</imposto>${infAdProdXml(item)}<vItem>${vBc}</vItem></det>`,
     vPis: pis.vPis,
     vCofins: pis.vCofins,
     ibs,
@@ -262,7 +293,7 @@ export function buildUnsignedNfeXml(draft: NfeEmissionDraft): string {
   if (draft.items.length === 0) throw new Error('A nota precisa de pelo menos um item');
   const cUf = UF_TO_CODE[draft.emit.ender.UF];
   if (!cUf) throw new Error('UF do emitente sem código IBGE');
-  const vProd = draft.items.reduce((sum, item) => addMoney(sum, Number(money(new Decimal(item.qCom).mul(item.vUnCom).toNumber()))), 0);
+  const vProd = draft.items.reduce((sum, item) => addMoney(sum, Number(itemProductValue(item))), 0);
   const vDesc = draft.items.reduce((sum, item) => addMoney(sum, item.vDesc ? Number(money(item.vDesc)) : 0), 0);
   const vFrete = money(draft.vFrete || 0);
   const vSeg = money(draft.vSeg || 0);

@@ -177,6 +177,7 @@ export default function StockProductTreeTable({
         );
       }
       if (groupClosed) continue;
+      for (const p of group.loose) rows.push(productRow(p));
       for (const sub of group.subgroups) {
         const subClosed = collapsed.has(sub.key);
         rows.push(
@@ -188,7 +189,6 @@ export default function StockProductTreeTable({
           for (const p of sub.products) rows.push(productRow(p));
         }
       }
-      for (const p of group.loose) rows.push(productRow(p));
     }
   }
 

@@ -39,7 +39,14 @@ export type AuthorizeDeps = {
 };
 
 export type AuthorizeResult =
-  | { status: 'authorized'; invoiceId: string | null; accessKey?: string }
+  | {
+      status: 'authorized';
+      invoiceId: string | null;
+      accessKey?: string;
+      /** false quando a SEFAZ autorizou e a baixa de estoque falhou. */
+      stockRecorded?: boolean;
+      stockWarning?: string;
+    }
   | { status: 'rejected'; cStat: string; xMotivo: string }
   /**
    * A SEFAZ pode ter recebido a nota e nós não sabemos. Número e chave
@@ -531,13 +538,25 @@ async function finalizeAuthorized(
     });
   } catch (err) {
     log.error({ err, invoiceId, emissionId: ctx.emissionId }, 'Falha ao gravar movimentos de estoque na NF-e emitida');
+    await maybeMatchAfterUnimedNfeIssued({
+      companyId: ctx.companyId,
+      recipientCnpj: input.dest.cnpj,
+      invoiceId,
+    });
+    return {
+      status: 'authorized',
+      invoiceId,
+      accessKey: input.accessKey,
+      stockRecorded: false,
+      stockWarning: 'NF-e autorizada, mas o estoque não baixou. A baixa precisa ser refeita.',
+    };
   }
   await maybeMatchAfterUnimedNfeIssued({
     companyId: ctx.companyId,
     recipientCnpj: input.dest.cnpj,
     invoiceId,
   });
-  return { status: 'authorized', invoiceId, accessKey: input.accessKey };
+  return { status: 'authorized', invoiceId, accessKey: input.accessKey, stockRecorded: true };
 }
 
 async function listCustomerCnpjs(companyId: string): Promise<Set<string>> {

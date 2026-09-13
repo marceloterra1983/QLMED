@@ -120,12 +120,18 @@ export function safeCollapseKeys(
  * renderiza, mas toda a estrutura acima fica visível.
  */
 export function leafCollapseKeys(products: ProductRow[]): Set<string> {
+  const linesWithNamedGroup = new Set<string>();
+  for (const p of products) {
+    if (!isGroupSameAsLine(p) || productSubgroupKey(p)) {
+      linesWithNamedGroup.add(productLineKey(p));
+    }
+  }
   const keys = new Set<string>();
   for (const p of products) {
     const sub = productSubgroupKey(p);
     if (sub) keys.add(sub);
     else if (!isGroupSameAsLine(p)) keys.add(productGroupKey(p, 'productType'));
-    else keys.add(productLineKey(p));
+    else if (!linesWithNamedGroup.has(productLineKey(p))) keys.add(productLineKey(p));
   }
   return keys;
 }

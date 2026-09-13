@@ -108,6 +108,11 @@ export async function decideInvoiceItems(
   memory: LinkMemory,
 ): Promise<ItemLinkRow[]> {
   const products = await extractProductsFromXml(invoice.xmlContent);
+  const company = await prisma.company.findUnique({
+    where: { id: invoice.companyId },
+    select: { cnpj: true },
+  });
+  const ownCnpj = company?.cnpj ?? null;
   const rows: ItemLinkRow[] = [];
   const seen = new Set<number>();
   products.forEach((p, idx) => {
@@ -124,7 +129,7 @@ export async function decideInvoiceItems(
       ncm: p.ncm,
     };
     // Sempre avalia: SKIPPED_* aplica mesmo sem cProd/EAN/ANVISA.
-    const decision = matchItem(input, index, memory);
+    const decision = matchItem(input, index, memory, { ownCnpj });
     rows.push({ ...input, itemNumber, unit: p.unit === '-' ? null : p.unit, decision });
   });
   return rows;

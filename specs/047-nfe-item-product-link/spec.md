@@ -120,7 +120,7 @@ desde 2021 e de cada nota nova, de forma idempotente e determinística.
 **Acceptance**:
 
 - **AC-008**: Cascata pára na primeira estratégia que casa de forma **única**:
-  `S6` (memória MANUAL do par CNPJ+`cProd`) → `S1` (`cProd` == `codigo`) →
+  `S6` (memória MANUAL do par CNPJ+`cProd`) → `S1` (`cProd` == `codigo`, só se o CNPJ do emitente for o da própria empresa) →
   `S2` (`cProd` normalizado == `code`/`product_refs`; variantes: sem zeros à
   esquerda, OCR letra O→0, sem prefixo numérico 1-3 dígitos) → `S3` (EAN
   válido == `ean`) → `S4` (registro ANVISA do item == `anvisa_code`) → `S5`

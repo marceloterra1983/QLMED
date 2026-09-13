@@ -518,7 +518,11 @@ export default function EmitirNfePage() {
       const res = await fetch(`/api/nfe-emissions/${id}/authorize`, { method: 'POST' });
       const data = await res.json();
       if (res.ok && data.status === 'authorized') {
-        toast.success('NF-e autorizada pela SEFAZ');
+        if (data.stockRecorded === false) {
+          toast.warning(data.stockWarning || 'NF-e autorizada, mas o estoque não baixou.');
+        } else {
+          toast.success('NF-e autorizada pela SEFAZ');
+        }
         router.push('/fiscal/issued');
         return;
       }
