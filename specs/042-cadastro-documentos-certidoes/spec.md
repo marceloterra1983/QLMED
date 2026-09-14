@@ -146,13 +146,15 @@ falhar de forma visível, não chutar.
 
 ### Alerta por WhatsApp
 
-- **FR-010**: Um job diário às 08:00 `America/Sao_Paulo` (tick a cada 60 s com
-  chave de slot, como `sync-scheduler`) percorre o documento vigente de cada
-  tipo e envia **o PDF como documento** com legenda quando `diasRestantes` está
-  em `{30, 15, 7, 3, 1, 0}` ou, vencido, a cada 7 dias (`-7, -14, ...`).
-  Idempotência por `(documento, limiar)` em `alertedThresholds Int[]`; o
-  limiar entra no array **antes** do envio (sem duplicar em reinício).
-  Tipo **sem documento** gera uma linha de texto no mesmo aviso diário.
+- **FR-010**: O grupo WhatsApp de Documentos **não** recebe PDF por calendário
+  de vencimento. Um job diário às 08:00 `America/Sao_Paulo` (tick a cada 60 s
+  com chave de slot) pode marcar o dia em `lastAlertDay` e permanece no
+  catálogo de rotinas, mas **não baixa PDF e não chama Evolution**. Prazos
+  (`30, 15, 7, 3, 1, 0` e vencido a cada 7 dias) continuam visíveis só na
+  página `/cadastro/documentos`. Envio de PDF ao grupo acontece **somente**
+  quando um documento novo é lançado no sistema (FR-011: ingestão ou upload
+  que substitui o vigente com validade maior). Tipo sem documento não gera
+  mensagem no grupo.
 - **FR-011**: Quando a ingestão **ou o upload manual (FR-007)** encontra um
   documento cujo `validUntil` supera o vigente anterior do mesmo tipo, envia
   o PDF uma única vez (`renewalNotifiedAt`): (1) por e-mail conforme FR-046
@@ -460,9 +462,10 @@ falhar de forma visível, não chutar.
 - **AC-005** (FR-006/005b): duas linhas do mesmo tipo → a de maior
   `validUntil` é a vigente; linha com `removedAt` nunca é vigente. A
   listagem da página não inclui histórico nem arquivos `kind=outro`.
-- **AC-006** (FR-010): com `now` = 25 dias antes da validade não envia; = 30
-  envia uma vez e não repete no tick seguinte; = -7 envia; envio recebe o PDF
-  e a legenda contém tipo, arquivo e "vence em N dias"/"vencida há N dias".
+- **AC-006** (FR-010): com `now` = 25, 30 ou -7 dias em relação à validade, o
+  tick diário **não** chama `sendDocument`, **não** baixa o PDF e **não**
+  consome `alertedThresholds`. O segundo tick do mesmo dia continua 0 envios.
+  Envio ao grupo só ocorre no caminho FR-011 (AC-008).
 - **AC-007** (FR-012): sem `DOCUMENTOS_WHATSAPP_GROUP_JID` o resolvedor devolve
   `null` e nenhuma chamada à Evolution acontece; JID de telefone (não `@g.us`) é
   rejeitado.

@@ -32,8 +32,10 @@ describe('SPEC-042 L10 — tabela de famílias', () => {
     const alerts = readFileSync('src/lib/documentos/alerts.ts', 'utf8');
     const list = readFileSync('src/lib/documentos/list.ts', 'utf8');
     expect(ingest).toMatch(/for \(const family of DOCUMENTOS_FAMILIES\)/);
-    expect(alerts).toMatch(/for \(const family of DOCUMENTOS_FAMILIES\)/);
     expect(list).toMatch(/for \(const family of DOCUMENTOS_FAMILIES\)/);
+    // Tick de vencimento não envia WhatsApp (FR-010); o grupo só recebe
+    // lançamento/renovação, então alerts.ts não itera famílias.
+    expect(alerts).not.toMatch(/for \(const family of DOCUMENTOS_FAMILIES\)/);
     expect(ingest).not.toMatch(/if \(family\.category === 'sanitaria'\)/);
     expect(alerts).not.toMatch(/kind === 'afe_anvisa'/);
   });
