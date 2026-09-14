@@ -1,10 +1,7 @@
 import type { BackgroundServiceName, BackgroundServiceStatus } from './background-service-health';
 import { CASSEMS_INGEST_INTERVAL_MS } from './cassems/constants';
 import { UNIMED_CG_INGEST_INTERVAL_MS } from './unimed-cg/constants';
-import {
-  DOCUMENTOS_ALERT_THRESHOLDS,
-  DOCUMENTOS_INGEST_INTERVAL_MS,
-} from './documentos/constants';
+import { DOCUMENTOS_INGEST_INTERVAL_MS } from './documentos/constants';
 import { IMPCG_INGEST_INTERVAL_MS } from './impcg/constants';
 import { PAGE_GROUPS } from './navigation';
 
@@ -311,7 +308,7 @@ export const SYSTEM_ROUTINES: SystemRoutine[] = [
   },
   {
     id: 'documentos-alert',
-    name: 'Alertas Diários de Vencimento de Documentos',
+    name: 'WhatsApp de Documentos (somente lançamento)',
     category: 'documentos',
     categoryLabel: 'Documentos & Regulatório',
     triggerType: 'background_service',
@@ -320,7 +317,7 @@ export const SYSTEM_ROUTINES: SystemRoutine[] = [
     scheduleDetails: 'Verificação minuto a minuto; executa o lote no slot das 08:00 da manhã local',
     concurrencyLock: 'Postgres Advisory Lock (documentosAlertLockKey) + deduplicação de limiar em alertedThresholds',
     sourceModule: 'src/lib/documentos/alerts.ts',
-    description: `Verifica certidões e alvarás vigentes que atingiram limiares de aviso (${DOCUMENTOS_ALERT_THRESHOLDS.join(', ')} dias ou vencidos), baixa o PDF vigente e envia a notificação com arquivo anexo via WhatsApp (Evolution API).`,
+    description: 'Não envia PDF ao grupo por calendário de vencimento. O WhatsApp de Documentos dispara só em lançamento ou renovação (upload/ingestão com validade maior). Prazos continuam visíveis na página Documentos.',
     backgroundServiceName: 'documentos-alert',
     environmentVars: ['QLMED_DISABLE_BACKGROUND_SERVICES', 'EVOLUTION_API_URL', 'DOCUMENTOS_WHATSAPP_GROUP'],
   },

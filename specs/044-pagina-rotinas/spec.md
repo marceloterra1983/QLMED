@@ -37,7 +37,7 @@ Esta especificação cria a página canônica **Rotinas** (`/sistema/rotinas`), 
 8. **Ingestão Automática de E-mails/Faturas IMPCG**: Ciclo a cada 15 minutos via Microsoft Graph para download e OCR de guias e relatórios de faturamento do IMPCG.
 9. **Ingestão Automática de E-mails/Faturas CASSEMS**: Ciclo a cada 15 minutos via Microsoft Graph para processamento de demonstrativos de contas médicas CASSEMS.
 10. **Ingestão de Documentos Corporativos (OneDrive)**: Ciclo a cada 1 hora (`DOCUMENTOS_INGEST_INTERVAL_MS`) para detecção de certidões, alvarás e contratos da pasta corporativa da empresa.
-11. **Alertas Diários de Vencimento de Documentos**: Execução diária às 08:00 (Brasília) para verificação de prazos de certidões e envio de PDFs com aviso via WhatsApp Evolution API.
+11. **WhatsApp de Documentos (somente lançamento)**: Tick diário às 08:00 (Brasília) não envia PDF por vencimento. O grupo recebe PDF só quando um documento novo é lançado ou renovado no sistema.
 12. **Purga e Retenção do Outbox de Notificações**: Ciclo a cada 24 horas para expurgo seguro de entregas de notificações antigas acima do teto de retenção.
 13. **Despacho de Notificações Outbox (Worker Cron)**: Execução a cada 10 minutos (`*/10` em `install-notification-outbox-cron.sh`, NFE e CTE) consumindo a fila transacional tokenizada para envio de Web Push e WhatsApp.
 14. **Sincronização e Validação com Base ANVISA**: Validação cadastral periódica e sob demanda de produtos hospitalares contra os dados abertos da ANVISA.

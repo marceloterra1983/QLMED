@@ -11,7 +11,7 @@ import {
   pageSectionForRoutine,
 } from '@/lib/system-routines';
 import type { BackgroundServiceName } from '@/lib/background-service-health';
-import { DOCUMENTOS_INGEST_INTERVAL_MS, DOCUMENTOS_ALERT_THRESHOLDS } from '@/lib/documentos/constants';
+import { DOCUMENTOS_INGEST_INTERVAL_MS } from '@/lib/documentos/constants';
 import { IMPCG_INGEST_INTERVAL_MS } from '@/lib/impcg/constants';
 import { CASSEMS_INGEST_INTERVAL_MS } from '@/lib/cassems/constants';
 import { canAccessApi, PAGE_GROUPS } from '@/lib/navigation';
@@ -107,8 +107,8 @@ describe('System Routines Catalog', () => {
     expect(byId['cassems-mail-ingest'].frequency).toMatch(/15 minutos/i);
     expect(byId['unimed-cg-mail-ingest'].frequency).toMatch(/15 minutos/i);
 
-    expect(DOCUMENTOS_ALERT_THRESHOLDS).toEqual([30, 15, 7, 3, 1, 0]);
-    expect(byId['documentos-alert'].description).toMatch(/30, 15, 7, 3, 1, 0/);
+    expect(byId['documentos-alert'].description).toMatch(/lançamento|renova/i);
+    expect(byId['documentos-alert'].description).not.toMatch(/envia a notificação com arquivo anexo/i);
 
     expect(byId['sefaz-auto-sync'].frequency).toMatch(/6 horas|360 min/i);
     expect(byId['sefaz-auto-sync'].frequency).not.toMatch(/A cada 1 hora$/);

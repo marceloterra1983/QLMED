@@ -164,12 +164,12 @@ copiando `requireImpcgPage`. Rotas só autenticam, validam e delegam.
 ```ts
 resolveDocumentosWhatsAppTarget(config?): { jid, port } | null   // espelho de resolveImpcgWhatsAppTarget
 buildExpiryCaption(row, days): string                              // sem dado sensível; tipo + arquivo + "vence em N dias"/"vencida há N dias"/"vence hoje"
-runDocumentosAlertTick(companyId, now?): Promise<{ sent: number }> // roda só se slot diário 08:00 SP ainda não marcado em lastAlertDay
-notifyRenewals(events: RenewalEvent[]): Promise<void>              // chamado pela ingestão
+runDocumentosAlertTick(companyId, now?): Promise<{ sent: number }> // slot 08:00 SP; NÃO envia WhatsApp (só lastAlertDay)
+notifyRenewals(events: RenewalEvent[]): Promise<void>              // único envio ao grupo: lançamento/renovação
 ```
 
-Marcação `alertedThresholds` **antes** do envio (falha → limiar consumido, log
-de erro, sem reenvio infinito — mesmo espírito de JOB-005 do outbox).
+O tick diário **não** envia PDF. `alertedThresholds` só importa se o envio
+por vencimento for reativado; o caminho vivo é `notifyRenewals` (JOB-005).
 
 ### UI — L6 / L9
 
@@ -195,7 +195,7 @@ L0  SPEC-042 entregue em produção
 ├── L4  Ingestão OneDrive + scheduler + health     gates/L4-ingest.md
 ├── L5  Rotas API                                  gates/L5-api.md
 ├── L6  Página UI + preview :3002                  gates/L6-ui.md
-├── L7  Alertas WhatsApp (diário + renovação)      gates/L7-whatsapp.md
+├── L7  Alertas WhatsApp (só lançamento/renovação; tick sem PDF)  gates/L7-whatsapp.md
 ├── L8  Integração: CI, PR, deploy autorizado      gates/L8-integracao.md
 ├── L10 Famílias (sanitária + carta)               gates/L10-familias.md
 └── S1  Spike emissão automática (sem código)      gates/S1-spike-emissao.md (paralelo, independente)
@@ -211,8 +211,8 @@ Ordem: L1 → (L2 ‖ L3) → L4 → L5 → L6 → L7 → L8. L10 sobre `origin/
 - **Validade do nome, não do PDF.** 23/24 arquivos reais têm a data no nome e
   ela é a validade. Parser de texto de PDF (nova dependência) fica de fora até
   o override manual se provar insuficiente.
-- **Envio como documento, não texto.** `sendWhatsAppDocument` já existe e
-  mandar o PDF junto com o aviso é útil; evita criar `sendText` agora.
+- **Envio como documento, não texto, e só em lançamento.** `sendWhatsAppDocument`
+  no grupo dispara em FR-011 (PDF novo no sistema), nunca no tick de vencimento.
 - **Grupo próprio.** `DOCUMENTOS_WHATSAPP_GROUP_JID`; homologar num grupo de
   teste antes de apontar para o grupo real (mesma sequência do IMPCG).
 
