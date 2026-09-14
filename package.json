@@ -81,7 +81,7 @@
     "eslint": "^9.39.4",
     "eslint-config-next": "15.5.25",
     "js-yaml": "^5.4.1",
-    "jsdom": "^28.1.0",
+    "jsdom": "^30.0.1",
     "postcss": "8.5.28",
     "tailwindcss": "^3.4.0",
     "typescript": "^6.0.3",
