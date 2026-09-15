@@ -32,6 +32,9 @@ vi.mock('@/lib/stock-entry-store', () => ({
 vi.mock('@/lib/register-entry', () => ({
   registerInvoiceEntry: mocks.registerInvoiceEntry,
 }));
+vi.mock('@/lib/stock-ledger', () => ({
+  syncEntryItemMovement: vi.fn().mockResolvedValue('updated'),
+}));
 vi.mock('@/lib/prisma', () => ({
   default: {
     invoice: {
@@ -137,13 +140,28 @@ describe('ExcelJS import route regressions', () => {
     sheet.getCell(5, 84).value = 5;
 
     mocks.invoiceFindMany.mockResolvedValueOnce([
-      { id: 'invoice-1', accessKey: 'access-key-1', number: '123' },
+      { id: 'invoice-1', accessKey: 'access-key-1', number: '123', xmlContent: '' },
     ]);
     // existing entry check (distinct invoice ids)
     mocks.nfeFindMany
       .mockResolvedValueOnce([{ invoiceId: 'invoice-1' }])
       // match by supplier_code
-      .mockResolvedValueOnce([{ id: 42, lot: null, quantity: 5 }]);
+      .mockResolvedValueOnce([{ id: 42, lot: null, lotExpiry: null, quantity: 5 }]);
+
+    mocks.updateNfeEntryItemLot.mockResolvedValue({
+      id: 42,
+      item_number: 1,
+      codigo_interno: 'INTERNAL-1',
+      supplier_code: 'SUPPLIER-1',
+      product_name: null,
+      supplier_description: null,
+      registry_id: null,
+      lot: 'LOT-2026',
+      lot_expiry: null,
+      lot_serial: null,
+      quantity: 5,
+      lot_quantity: 5,
+    });
 
     const response = await importE509(requestWithFile(await workbookFile(workbook, 'e509.xlsx')));
 
@@ -154,13 +172,15 @@ describe('ExcelJS import route regressions', () => {
       skipped: 0,
       notFound: 0,
       registered: 0,
+      expiryFilled: 0,
       totalRows: 1,
+      format: 'xlsx',
     });
     expect(mocks.updateNfeEntryItemLot).toHaveBeenCalledWith(
       'company-1',
       'invoice-1',
       42,
-      { lot: 'LOT-2026', lotQuantity: 5 },
+      { lot: 'LOT-2026', lotExpiry: null, lotQuantity: 5 },
     );
   });
 });

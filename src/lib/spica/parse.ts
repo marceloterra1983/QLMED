@@ -185,10 +185,17 @@ export function normalizeSpicaRelRow(row: SpicaRelRowInput): SpicaNormalizedRow 
 
   const ipiSaida = parseBrPercent(row.ipiSaida);
   const productType = tipo.invalid ? null : tipo.productType;
-  let productSubtype = tipo.invalid ? null : String(row.subtipo ?? '').trim() || null;
+  // SubTipo às vezes vem com o mesmo prefixo numérico do Tipo (`4 - OUTROS`).
+  const subtypeRaw = tipo.invalid ? '' : String(row.subtipo ?? '').trim();
+  const subtypeStripped = subtypeRaw.replace(TIPO_PREFIX, '').trim() || subtypeRaw;
+  let productSubtype = subtypeStripped || null;
   // Spica repete a linha no SubTipo quando não há grupo (OUTROS/OUTROS).
   // Grupo igual à linha não tem cabeçalho e vaza debaixo do último grupo fechado.
-  if (productType && productSubtype && productType === productSubtype) {
+  if (
+    productType &&
+    productSubtype &&
+    productType.toUpperCase() === productSubtype.toUpperCase()
+  ) {
     productSubtype = 'Sem grupo';
   }
   return {

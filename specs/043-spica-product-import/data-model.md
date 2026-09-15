@@ -9,12 +9,12 @@
 | nome | string | Rel.Nome |
 | tipoRaw | string | Rel.Tipo |
 | tipo | string | tipoRaw sem `^\d+\s*[-–]\s*` → `ProductRegistry.productType` (**Linha**) |
-| subtipo | string | Rel.SubTipo → `ProductRegistry.productSubtype` (**Grupo**). Se SubTipo = Tipo (OUTROS/OUTROS), gravar `Sem grupo` — grupo igual à linha não tem cabeçalho e vaza na árvore. Subgrupo continua null. |
+| subtipo | string | Rel.SubTipo → `ProductRegistry.productSubtype` (**Grupo**). Strip do prefixo `N - ` quando presente. Se SubTipo (stripped) = Tipo (case-insensitive), gravar `Sem grupo`. Subgrupo continua null. |
 | — | null | `ProductRegistry.productSubgroup` sempre null: Spica não tem 3º nível |
 | fabricante | string | Rel.Fabricante |
 | fornecedor | string? | Rel.Fornecedor |
 | instrumental | boolean | Rel.Instrumental Sim/Não |
-| outOfLine | boolean | tipoRaw contém FORA DE LINHA |
+| outOfLine | boolean | tipoRaw contém FORA DE LINHA **ou** não há ENTRADA_NFE em nota received para o código (apply) |
 | anvisa | string? | Rel.RVS ≡ List.ANVISA |
 | ncm | string? | Rel.NCM |
 | sitTributaria | string | Rel.Situação Tributária |

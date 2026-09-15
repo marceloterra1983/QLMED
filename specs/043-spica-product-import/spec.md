@@ -50,7 +50,11 @@ fabricante; e criar órfãos Spica-only.
    = código Spica nos matched e create é idempotente na 2ª execução.
 2. **Given** tipo contendo `FORA DE LINHA`, **When** apply, **Then**
    `outOfLine=true`.
-3. **Given** ANVISA já preenchida com source manual/xml, **When** apply,
+3. **Given** produto sem ENTRADA_NFE em nota `received` (ledger), **When** apply,
+   **Then** `outOfLine=true` mesmo que o Tipo Spica diga em linha. A planilha
+   Spica não identifica a NF de compra; o proxy é o ledger de entrada recebida,
+   não `aggLast*` (agg também atualiza em nota emitida).
+4. **Given** ANVISA já preenchida com source manual/xml, **When** apply,
    **Then** não sobrescreve ANVISA Spica sem flag explícita.
 
 ### User Story 3 — Validação cruzada das duas planilhas (Priority: P2)
