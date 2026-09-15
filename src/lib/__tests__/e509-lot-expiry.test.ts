@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { resolveUniqueLotExpiryFromXml } from '@/lib/e509/lot-expiry';
 
@@ -25,9 +27,6 @@ describe('resolveUniqueLotExpiryFromXml', () => {
     expect(resolveUniqueLotExpiryFromXml(xml, 'L1')).toBeNull();
   });
 });
-
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 
 describe('ops e509-incorporate DRY', () => {
   it('reusa resolveUniqueLotExpiryFromXml canônico (sem cópia local)', () => {
