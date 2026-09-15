@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       confirm_production:
-        description: 'Type exactly DEPLOY to authorize production mutation'
+        description: 'Type DEPLOY to authorize production mutation (leading/trailing spaces ignored)'
         required: true
         type: string
       revision:
@@ -48,7 +48,9 @@ jobs:
           CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
         run: |
           set -euo pipefail
-          if [ "${CONFIRM_PRODUCTION}" != "DEPLOY" ]; then
+          # Trim leading/trailing whitespace — GitHub UI often leaves a trailing space.
+          confirm="$(printf '%s' "${CONFIRM_PRODUCTION}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          if [ "${confirm}" != "DEPLOY" ]; then
             echo "Refusing deploy: confirm_production must be exactly DEPLOY" >&2
             exit 1
           fi
