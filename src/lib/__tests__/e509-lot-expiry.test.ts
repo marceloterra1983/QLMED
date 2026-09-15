@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { resolveUniqueLotExpiryFromXml } from '@/lib/e509/lot-expiry';
 
@@ -23,5 +25,17 @@ describe('resolveUniqueLotExpiryFromXml', () => {
       <rastro><nLote>L1</nLote><dVal>2029-01-01</dVal></rastro>
     `;
     expect(resolveUniqueLotExpiryFromXml(xml, 'L1')).toBeNull();
+  });
+});
+
+describe('ops e509-incorporate DRY', () => {
+  it('reusa resolveUniqueLotExpiryFromXml canônico (sem cópia local)', () => {
+    const src = readFileSync(
+      join(process.cwd(), 'ops/scripts/qlmed-e509-incorporate.mjs'),
+      'utf8',
+    );
+    expect(src).toMatch(/lot-expiry\.ts/);
+    expect(src).not.toMatch(/function resolveUniqueLotExpiryFromXml/);
+    expect(src).toMatch(/streamOdsRows/);
   });
 });

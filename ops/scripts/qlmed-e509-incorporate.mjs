@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env -S node --experimental-strip-types
 /**
  * Incorpora lotes da planilha E509 (ODS/TSV) e validade do XML nas entradas
  * ENTRADA_NFE. Default: dry-run. Use --apply para gravar.
@@ -11,10 +11,11 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createRequire } from 'node:module';
+import { resolveUniqueLotExpiryFromXml } from '../../src/lib/e509/lot-expiry.ts';
+import { streamOdsRows } from '../../src/lib/ods-rows.ts';
 
 const require = createRequire(import.meta.url);
 const pg = require('pg');
-const JSZip = require('jszip');
 
 function usage() {
   console.log(`Usage:
@@ -51,90 +52,23 @@ function isSentinel(iso) {
   return !iso ? false : iso.startsWith('2099-') || iso.startsWith('9999-') || iso.startsWith('2999-');
 }
 
-function resolveUniqueLotExpiryFromXml(xml, lot) {
-  const target = String(lot || '').trim();
-  if (!xml || !target) return null;
-  const dates = new Set();
-  const want = normLot(target);
-  const wantA = alnum(target);
-  const rRe = /<rastro>([\s\S]*?)<\/rastro>/gi;
-  let r;
-  while ((r = rRe.exec(xml))) {
-    const nLote = ((r[1].match(/<nLote>([^<]*)<\/nLote>/i) || [])[1] || '').trim();
-    if (normLot(nLote) === want || (wantA && alnum(nLote) === wantA)) {
-      const d = isoDate((r[1].match(/<dVal>([^<]*)<\/dVal>/i) || [])[1] || '');
-      if (d) dates.add(d);
-    }
-  }
-  if (dates.size === 0) {
-    const esc = target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const win = new RegExp(`.{0,120}${esc}.{0,120}`, 'gi');
-    let m;
-    while ((m = win.exec(xml))) {
-      const labeled = m[0].match(
-        /(?:Validade|Val\.?|Venc(?:imento)?|<dVal>)\s*[:.]?\s*(\d{2}\/\d{2}\/\d{4}|\d{4}-\d{2}-\d{2})/i,
-      );
-      if (labeled) {
-        const d = isoDate(labeled[1]);
-        if (d) dates.add(d);
-      }
-    }
-  }
-  if (dates.size !== 1) return null;
-  return [...dates][0];
-}
-
-function cellText(cellXml) {
-  const dateAttr = cellXml.match(/\b(?:office:)?date-value="([^"]+)"/i);
-  if (dateAttr) return dateAttr[1].slice(0, 10);
-  const parts = [];
-  const pRe = /<(?:text:)?p\b[^>]*>([\s\S]*?)<\/(?:text:)?p>/gi;
-  let m;
-  while ((m = pRe.exec(cellXml))) {
-    parts.push(m[1].replace(/<[^>]+>/g, '').trim());
-  }
-  return parts.filter(Boolean).join(' ').trim();
-}
-
 async function loadOdsRows(buf) {
-  const zip = await JSZip.loadAsync(buf);
-  const entry = zip.file('content.xml');
-  if (!entry) throw new Error('ODS sem content.xml');
-  const xml = await entry.async('string');
-  const tableMatch = xml.match(/<table:table\b[^>]*>([\s\S]*?)<\/table:table>/i);
-  if (!tableMatch) throw new Error('ODS sem tabela');
   const out = [];
-  const rowRe = /<table:table-row\b([^>]*)>([\s\S]*?)<\/table:table-row>/gi;
-  let rowMatch;
-  let index0 = 0;
-  while ((rowMatch = rowRe.exec(tableMatch[1]))) {
-    const cells = [];
-    const cellRe =
-      /<table:table-cell\b([^/>]*)\/>|<table:table-cell\b([^>]*)>([\s\S]*?)<\/table:table-cell>/gi;
-    let cellMatch;
-    while ((cellMatch = cellRe.exec(rowMatch[2] || ''))) {
-      const attrs = cellMatch[1] ?? cellMatch[2] ?? '';
-      const inner = cellMatch[3] ?? '';
-      const rep = Math.min(Number((attrs.match(/number-columns-repeated="(\d+)"/) || [])[1] || '1'), 200);
-      const val = cellText(`<table:table-cell ${attrs}>${inner}</table:table-cell>`);
-      for (let k = 0; k < rep && cells.length < 200; k++) cells.push(val);
+  await streamOdsRows(buf, (row) => {
+    if (row.index0 < 4) return;
+    const key = String(row.cells[8] || '').replace(/\D/g, '');
+    const lote = row.str(82);
+    if (key && lote) {
+      out.push({
+        key,
+        codigo: row.str(32),
+        lote,
+        canc: row.str(31),
+        nf: row.str(0).replace(/^0+/, ''),
+        ref: row.str(33),
+      });
     }
-    if (index0 >= 4) {
-      const key = String(cells[8] || '').replace(/\D/g, '');
-      const lote = String(cells[82] || '').trim();
-      if (key && lote) {
-        out.push({
-          key,
-          codigo: String(cells[32] || '').trim(),
-          lote,
-          canc: String(cells[31] || '').trim(),
-          nf: String(cells[0] || '').replace(/^0+/, ''),
-          ref: String(cells[33] || '').trim(),
-        });
-      }
-    }
-    index0 += 1;
-  }
+  });
   return out;
 }
 
