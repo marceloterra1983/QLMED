@@ -311,6 +311,12 @@ describe('deploy-production.yml — writer is vps2, runner stays on server', () 
     expect(yml).toMatch(/confirm_production must be exactly DEPLOY/);
   });
 
+  it('protege compose run de engolir o stdin do bash -s (release)', () => {
+    expect(remote).toMatch(/run --rm --no-deps -T qlmed-app/);
+    expect(remote).toMatch(/<\/dev\/null/);
+    expect(remote).toMatch(/qlmed-deploy-vps2: migrations ok/);
+  });
+
   it('reprova o workflow antigo que fazia up local (controlo positivo)', () => {
     expect(yml).not.toMatch(/Deploy stack on server/);
     const legacy = [

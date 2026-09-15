@@ -92,18 +92,20 @@ restore_previous() {
 }
 trap restore_previous ERR
 "${compose[@]}" stop qlmed-app
-"${compose[@]}" run --rm --no-deps qlmed-app sh -c '
+# compose run anexa stdin por padrão; com `ssh … bash -s` + heredoc isso
+# engole o resto do script (incluindo o `up`) e o health falha sem subir
+# a imagem nova — reproduzido nos runs 34918050676 / 34919839986.
+"${compose[@]}" run --rm --no-deps -T qlmed-app sh -c '
   set -eu
   state=/tmp/qlmed-production-migration-window.json
   node scripts/verify-production-migration-window.cjs before "$state"
   node node_modules/prisma/build/index.js migrate deploy
   node node_modules/prisma/build/index.js migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
   node scripts/verify-production-migration-window.cjs after "$state"
-'
-# --force-recreate: sem isso o compose pode só reativar o container
-  # parado (imagem anterior) após o `stop` + `run` de migrate, e o
-  # health em :13000 falha até o rollback — visto no run 34918050676.
-  "${compose[@]}" up -d --no-build --force-recreate qlmed-app
+' </dev/null
+echo "qlmed-deploy-vps2: migrations ok; recreating qlmed-app"
+"${compose[@]}" up -d --no-build --force-recreate qlmed-app
+echo "qlmed-deploy-vps2: qlmed-app recreated"
 trap - ERR
 EOS
     ;;
