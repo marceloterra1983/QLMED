@@ -13,12 +13,31 @@ export interface SpicaImportSummary {
 }
 
 /**
- * Em linha só com nota de compra identificada no cadastro. A planilha Spica
- * não traz essa nota; sem data e número, o item fica fora de linha mesmo que
- * o Tipo não diga "FORA DE LINHA".
+ * Em linha só com compra recebida identificada. A planilha Spica não traz a NF;
+ * sem entrada de nota recebida no ledger, o item fica fora de linha mesmo que o
+ * Tipo não diga "FORA DE LINHA".
  */
 export function resolveSpicaOutOfLine(sheetOutOfLine: boolean, hasPurchaseInvoice: boolean): boolean {
   return sheetOutOfLine || !hasPurchaseInvoice;
+}
+
+/**
+ * Códigos Spica com pelo menos uma ENTRADA_NFE em nota `received`.
+ * Não usa agg* — agg também é preenchido no modo import (nota emitida).
+ */
+export async function loadReceivedPurchaseCodigos(companyId: string): Promise<Set<string>> {
+  const rows = await prisma.stockMovement.findMany({
+    where: {
+      companyId,
+      kind: 'ENTRADA_NFE',
+      direction: 'IN',
+      productCodigo: { not: '' },
+      invoice: { direction: 'received' },
+    },
+    select: { productCodigo: true },
+    distinct: ['productCodigo'],
+  });
+  return new Set(rows.map((r) => r.productCodigo.trim()).filter(Boolean));
 }
 
 export function buildCanonicalSpicaProductKey(ref: string, codigo: string, isRefUnique: boolean): string {
@@ -65,10 +84,10 @@ export async function processSpicaRows(
       anvisaSource: true,
       productRefs: true,
       fiscalSitTributaria: true,
-      aggLastIssueDate: true,
-      aggLastInvoiceNumber: true,
     },
   });
+
+  const purchaseCodigos = await loadReceivedPurchaseCodigos(companyId);
 
   const existingByKey = new Map(existingRows.map((r) => [r.productKey, r]));
   const existingByCodeUpper = new Map<string, typeof existingRows[0]>();
@@ -122,7 +141,7 @@ export async function processSpicaRows(
         productSubgroup: norm.productSubgroup,
         outOfLine: resolveSpicaOutOfLine(
           norm.outOfLine,
-          Boolean(match.aggLastIssueDate) && Boolean(match.aggLastInvoiceNumber?.trim()),
+          purchaseCodigos.has(norm.codigo),
         ),
         instrumental: norm.instrumental,
         manufacturerShortName: norm.manufacturerShortName,
