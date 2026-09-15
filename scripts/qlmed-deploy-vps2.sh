@@ -100,7 +100,10 @@ trap restore_previous ERR
   node node_modules/prisma/build/index.js migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
   node scripts/verify-production-migration-window.cjs after "$state"
 '
-"${compose[@]}" up -d --no-build qlmed-app
+# --force-recreate: sem isso o compose pode só reativar o container
+  # parado (imagem anterior) após o `stop` + `run` de migrate, e o
+  # health em :13000 falha até o rollback — visto no run 34918050676.
+  "${compose[@]}" up -d --no-build --force-recreate qlmed-app
 trap - ERR
 EOS
     ;;

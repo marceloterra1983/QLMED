@@ -294,7 +294,7 @@ describe('deploy-production.yml — writer is vps2, runner stays on server', () 
     expect(yml).toContain('scripts/qlmed-deploy-vps2.sh');
     expect(yml).toContain('load-image');
     expect(remote).toMatch(/docker save/);
-    expect(remote).toMatch(/up -d --no-build qlmed-app/);
+    expect(remote).toMatch(/up -d --no-build --force-recreate qlmed-app/);
     expect(remote).toMatch(/127\.0\.0\.1:13000/);
     expect(remote).toMatch(/\bssh\b/);
   });
