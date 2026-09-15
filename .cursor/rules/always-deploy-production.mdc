@@ -1,5 +1,5 @@
 ---
-description: Preview canônico antes do deploy; sempre subir produção ao terminar
+description: Sempre subir produção ao terminar; sem preview persistente no host
 alwaysApply: true
 ---
 
@@ -8,19 +8,9 @@ alwaysApply: true
 Quando a tarefa do QLMED fechou (PR mergeado no `main`, ou mudança operacional
 já autorizada), **suba produção**. Não pergunte “quer deploy?”.
 
-## Gate de preview (UI / fluxo web)
-
-Se a mudança afeta UI, login, rotas Next ou comportamento no browser:
-
-1. Use o preview canônico `/home/marce/qlmed/.worktrees/preview` na porta
-   **3002** (`http://100.83.11.58:3002`, unit `qlmed-dev-preview`).
-2. Garanta que o preview está servindo o código da mudança (checkout/rebase
-   do tip na worktree preview, ou `cwd` do starter na worktree da feature).
-3. Smoke rápido (HTTP no preview + checagem visual/login se couber).
-4. Só então merge e deploy.
-
-Não invente outra porta nem outro Next. Detalhes: rule
-`dev-preview-persistente`.
+Não subir Next persistente neste host (`:3002` / `qlmed-dev-preview` /
+`.worktrees/preview` foram retirados). UI valida em
+`https://app.qlmed.com.br` depois do deploy.
 
 ## Deploy produção
 
@@ -44,5 +34,5 @@ Se a tarefa criou migration Prisma, o **mesmo PR** tem de atualizar
 Sem isso o deploy recusa a janela e a migration não aplica.
 
 Proibido: terminar só no GitHub; menu “quer que eu suba?”; deploy com CI vermelho;
-force-push em `main`; imprimir `production/env/app.env`; pular o preview canônico
-em mudança de UI.
+force-push em `main`; imprimir `production/env/app.env`; recriar o preview
+persistente `:3002` neste host.
