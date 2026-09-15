@@ -305,6 +305,12 @@ describe('deploy-production.yml — writer is vps2, runner stays on server', () 
     expect(yml).toMatch(/running on the runner host/);
   });
 
+  it('aceita DEPLOY com espaços laterais no confirm_production', () => {
+    expect(yml).toMatch(/confirm_production/);
+    expect(yml).toMatch(/sed 's\/\^\[\[:space:\]\]\*\/\/;s\/\[\[:space:\]\]\*\$\/\/'/);
+    expect(yml).toMatch(/confirm_production must be exactly DEPLOY/);
+  });
+
   it('reprova o workflow antigo que fazia up local (controlo positivo)', () => {
     expect(yml).not.toMatch(/Deploy stack on server/);
     const legacy = [
