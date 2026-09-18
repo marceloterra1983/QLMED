@@ -15,7 +15,7 @@ superseded_by: SPEC-046
 
 **Created**: 2026-08-26
 
-**Status**: Draft
+**Status**: Retired (SPEC-046)
 
 **Input**: Achado crítico do levantamento das 19 telas do painel — a tela Automações apresenta uma lista de workflows que é um array fixo no componente, sem status algum.
 

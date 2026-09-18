@@ -1,6 +1,6 @@
 ---
 id: SPEC-010
-status: draft
+status: implemented
 owner: QLMED
 affected_modules:
   - settings-ui
@@ -13,7 +13,7 @@ affected_modules:
 
 **Created**: 2026-08-26
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: Achado crítico do levantamento das 19 telas do painel — os três interruptores de notificação em Configurações são `useState` local e não persistem nada.
 

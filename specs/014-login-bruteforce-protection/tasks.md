@@ -1,5 +1,11 @@
 # Tasks: Proteção contra força bruta no login
 
+> **Superseded.** SPEC-014 alternativa C (e-mail como fator) foi revertida em
+> 27/08/2026. Identidade no login é só a senha: SPEC-019 / ADR-0012. O
+> mecanismo de bloqueio (`recordFailedLogin`, `lockedUntil`) permanece no
+> código. As checkboxes abaixo descrevem o plano C e **não** devem ser
+> ticadas como entregues.
+
 **Prerequisites**: [spec.md](./spec.md), [plan.md](./plan.md) — alternativa **C**, D5 = **(c)**
 
 **Tests**: obrigatórios, e com ênfase própria: o mecanismo atual **passa em toda a suíte existente** justamente por nunca ser exercitado. Teste que não reprova sem a correção não vale aqui.
