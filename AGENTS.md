@@ -170,7 +170,7 @@ destino público.
 ### Preview DEV canônico (Tailscale) — obrigatório antes de merge/deploy de UI
 
 Worktree permanente: `/home/marce/qlmed/.worktrees/preview`  
-URL: `http://100.83.11.58:3002`  
+URL: `http://100.68.84.119:3002`  
 Unit: `systemctl --user start qlmed-dev-preview`  
 Starter: `ops/scripts/qlmed-dev-preview-starter.mjs`  
 (`QLMED_PREVIEW_CWD` opcional para apontar a uma worktree de feature.)
@@ -181,7 +181,7 @@ checkout/rebase do tip **nessa** worktree (ou override do `cwd` do starter),
 smoke em `:3002`, **depois** PR/merge/deploy.
 
 - `NEXTAUTH_URL` (obrigatória em `src/lib/env.ts`): preview HTTP exige
-  `http://100.83.11.58:3002`. Herdar `https://app.qlmed.com.br` → cookie
+  `http://100.68.84.119:3002`. Herdar `https://app.qlmed.com.br` → cookie
   `Secure`/`__Host-` → CSRF drop → catch do `signIn` = “Erro ao fazer login”.
   Senha errada é outra mensagem (“Senha inválida”).
 - Diagnóstico refused: `ss` sem listen = processo morto (`systemctl --user
@@ -220,8 +220,8 @@ smoke em `:3002`, **depois** PR/merge/deploy.
   `prisma migrate deploy`, depois inicia `node server.js`.
 - Node 22 via nvm no host (dev); imagem Alpine (produção). Puppeteer com
   Chromium do sistema para geração de PDF.
-- Acesso de dev via Tailscale: `http://100.83.11.58:3000` (main); preview
-  canônico **só** `http://100.83.11.58:3002` (`.worktrees/preview`) —
+- Acesso de dev via Tailscale: `http://100.68.84.119:3000` (main); preview
+  canônico **só** `http://100.68.84.119:3002` (`.worktrees/preview`) —
   ver Preview DEV canônico.
 - `nvm` obrigatório: `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 22`
 - `n8n` `$env` expressions (`{{ $env.QLMED_API_URL }}` etc.): versões recentes do
