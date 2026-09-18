@@ -1,7 +1,7 @@
 [Unit]
 Description=QLMED preview Next.js :3002
-After=network-online.target docker.service
-Wants=network-online.target
+After=network-online.target docker.service qlmed-prod-db-tunnel.service
+Wants=network-online.target qlmed-prod-db-tunnel.service
 
 [Service]
 Type=simple

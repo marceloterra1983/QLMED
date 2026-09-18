@@ -35,7 +35,7 @@ integration behavior belongs in `src/lib`, not duplicated across route files.
 
 QLMED has one persistent canonical PostgreSQL database (`postgres`) through
 `DATABASE_URL`, plus disposable CI `qlmed_ci`. See
-[ADR-0007](../decisions/0007-single-canonical-database.md).
+[ADR-0020](../decisions/0020-omarchy-next-canonical-writer-tunnel.md).
 
 Production deployment remains driven by the GitHub Actions workflow after CI
 succeeds on `main`.

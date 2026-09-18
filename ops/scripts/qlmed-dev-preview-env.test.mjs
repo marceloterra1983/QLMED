@@ -1,20 +1,29 @@
 import { describe, expect, it } from 'vitest';
 import {
   assertLoopbackDatabaseUrl,
+  assertPreviewDatabaseUrl,
   pickEnvFile,
   resolvePreviewOrigin,
 } from './qlmed-dev-preview-env.mjs';
 
 describe('qlmed-dev-preview-env', () => {
-  it('aceita DATABASE_URL em 127.0.0.1', () => {
-    const u = assertLoopbackDatabaseUrl(
-      'postgresql://qlmed:x@127.0.0.1:5434/postgres',
+  it('aceita DATABASE_URL do túnel canônico :5435', () => {
+    const u = assertPreviewDatabaseUrl(
+      'postgresql://qlmed:x@127.0.0.1:5435/postgres',
     );
     expect(u.hostname).toBe('127.0.0.1');
-    expect(u.port).toBe('5434');
+    expect(u.port).toBe('5435');
   });
 
-  it('recusa host remoto (vps2 / produção)', () => {
+  it('recusa dump isolado :5434', () => {
+    expect(() =>
+      assertPreviewDatabaseUrl(
+        'postgresql://qlmed:x@127.0.0.1:5434/postgres',
+      ),
+    ).toThrow(/dump isolado/);
+  });
+
+  it('recusa host remoto (vps2 / produção direto)', () => {
     expect(() =>
       assertLoopbackDatabaseUrl(
         'postgresql://qlmed:x@100.92.240.120:5432/postgres',
