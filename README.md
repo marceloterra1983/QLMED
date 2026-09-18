@@ -2,37 +2,33 @@
 
 Modelo operacional do projeto:
 
-- `prod` fica no computador `server`
-- o checkout canônico com Git fica em `~/qlmed/app`
-- o runtime implantado do app, sem Git, fica em `/srv/qlmed/app`
-- o runtime da stack (Compose, envs e volumes) fica em `/srv/qlmed`
-  (`~/qlmed/production` é o alias operacional)
-- scripts/ops do QLMED ficam em `~/qlmed/ops`; os serviços compartilhados ficam
-  em `~/ops/{n8n,evolution,dependencies,...}`
-- `n8n` existe em `dev` e em `prod`
-- `Evolution` fica somente em `prod`
-- o QLMED mantém um único banco PostgreSQL persistente e canônico (`postgres`),
-  configurado somente por `DATABASE_URL`; não existe um segundo banco
-  persistente `qlmed_dev`
-- o CI usa `qlmed_ci` apenas como banco efêmero de testes, nunca como runtime
+- `prod` fica na **vps2** (único writer)
+- o checkout canônico com Git fica em `~/qlmed/app` no host **dev**
+- o runtime implantado do app, sem Git, fica em `/srv/qlmed/app` **na vps2**
+- o runtime da stack (Compose, envs e volumes) fica em `/srv/qlmed` na vps2
+- neste `dev`, `~/qlmed/production` é staging do builder (`qlmed-prod`), não o
+  runtime da vps2
+- scripts/ops do QLMED ficam em `~/qlmed/app/ops`
+- **n8n não existe mais** (nem em dev nem em prod)
+- `Evolution` fica somente em prod (vps2)
+- produção: um PostgreSQL canônico `postgres` na vps2, só via `DATABASE_URL`;
+  não existe `qlmed_dev`
+- o host `dev` usa restore isolado (Postgres local em `127.0.0.1`, nome
+  `postgres`) ou o sidecar `qlmed_ci` (`127.0.0.1:5433`); nunca aponta
+  `DATABASE_URL` para a vps2 — [ADR-0019](docs/decisions/0019-dev-isolated-restore-vps2-writer.md)
+- o CI usa `qlmed_ci` apenas como banco efêmero de testes
 
 ## Desenvolvimento
 
-- `n8n dev`: `http://100.83.11.58:5678/`
-- `app dev` via `npm run dev`: `http://100.83.11.58:3000/`
-- `app dev` via Docker: `http://100.83.11.58:3001/` (a porta 3001 está
-  ocupada pelo Uptime Kuma no server atual; use somente com override de porta
-  ou em outro host)
-- `Evolution usado pelo dev`: `https://evolution.qlmed.com.br`
-- `DATABASE_URL` deve ser fornecida pelo ambiente protegido. O processo local
-  usa o mesmo banco persistente canônico `postgres` do QLMED; não crie aliases
-  `*_DEV` ou `*_PROD` nem aponte para outro nome de banco.
-- O `docker-compose.yml` do checkout não sobe PostgreSQL local: ele exige
-  `DATABASE_URL` no `.env` protegido e conecta o app ao banco canônico. O
-  `qlmed_ci` do CI continua efêmero e separado apenas para testes.
-- Antes de uma operação que possa alterar dados, confirme o receipt recente do
-  conjunto `qlmed` no projeto `server-backup`. O código não lê `.env` nem
-  backups; essa conferência pertence ao operador/CI.
+- `app dev` via `npm run dev`: porta **3000** neste host `dev`
+- Preview canônico: worktree `~/qlmed/.worktrees/preview` na porta **3002**
+- **não** subir n8n
+- `Evolution usado pelo prod`: `https://evolution.qlmed.com.br`
+- `DATABASE_URL` no `dev` aponta só para o Postgres isolado local (`127.0.0.1`).
+  Não crie aliases `*_DEV`/`*_PROD` nem o nome de banco `qlmed_dev`.
+- Serviços de fundo desligados no `dev`: `QLMED_DISABLE_BACKGROUND_SERVICES=true`
+- Antes de uma operação que possa alterar dados **na vps2**, confirme o receipt
+  recente do conjunto `qlmed` no backup. O código não lê `.env` nem backups.
 
 ## Fonte de verdade
 
@@ -40,7 +36,8 @@ Modelo operacional do projeto:
 - os manifests de producao versionados ficam em `~/qlmed/app/production`
 - `/srv/qlmed/app/production` não é fonte de verdade: esse diretório é excluído
   do rsync de deploy e pode conter artefatos antigos
-- `/home/marce/qlmed/production` aponta para o runtime canônico `/srv/qlmed`; o workflow sincroniza o app em `/srv/qlmed/app` e o compose no diretório pai
+- `/home/marce/qlmed/production` neste `dev` é staging do builder; o runtime
+  canônico `/srv/qlmed` fica na **vps2**
 - a publicacao do app em `https://app.qlmed.com.br` **nao** e automatica no push: exige CI verde no SHA de `main` e um `workflow_dispatch` manual do `QLMED Production Deploy` (sem required reviewers no environment; so politica main-only)
 
 ## Publicacao
@@ -63,17 +60,7 @@ Sequencia real:
 
 ## Regras
 
-- o `n8n dev` nao deve ter cron ou webhook real ativo
-- o `n8n prod` e o unico dono dos gatilhos reais
-- o `n8n dev` deve testar integracoes com `Manual Trigger`
+- n8n foi aposentado; não instalar nem reativar
 - a chave do `Evolution` de producao nao deve ficar versionada no repositorio
-- o ideal e cadastrar a credencial do `Evolution` direto no `n8n dev`
-- `npm run dev` não deve iniciar sincronizadores de fundo contra o banco
-  canônico; use `QLMED_DISABLE_BACKGROUND_SERVICES=true` durante o trabalho
-  local.
-
-## Variaveis uteis no n8n dev
-
-- `QLMED_DEV_MODE=true` (somente modo do n8n; não seleciona outro banco)
-- `QLMED_ALLOW_REAL_EXECUTIONS=false`
-- `QLMED_EVOLUTION_BASE_URL=https://evolution.qlmed.com.br`
+- `npm run dev` não deve iniciar sincronizadores de fundo; use
+  `QLMED_DISABLE_BACKGROUND_SERVICES=true`

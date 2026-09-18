@@ -9,7 +9,7 @@ related_specs:
 
 # ADR-0007 — Banco persistente canônico único
 
-- **Status:** accepted
+- **Status:** superseded
 - **Date:** 2026-08-03
 - **Supersedes:** a orientação operacional de manter um banco persistente
   separado chamado `qlmed_dev`; os registros históricos não são reescritos.
