@@ -3,32 +3,46 @@
  * Preview DEV canônico QLMED — Next em :3002.
  * Worktree: /home/marce/qlmed/.worktrees/preview
  * Unit: systemctl --user start qlmed-dev-preview
- * URL: http://100.83.11.58:3002
+ * URL: Tailscale :3002 (QLMED_PREVIEW_ORIGIN ou `tailscale ip -4`)
  *
- * Override opcional: QLMED_PREVIEW_CWD=/path/to/feature-worktree
+ * Env: ~/qlmed/app/.env (nunca /srv/qlmed/env/app.env neste host — ADR-0019).
+ * Override: QLMED_PREVIEW_CWD, QLMED_PREVIEW_ENV, QLMED_PREVIEW_ORIGIN
  */
-import { spawn } from 'node:child_process';
-import dns from 'node:dns/promises';
+import { spawn, spawnSync } from 'node:child_process';
+import {
+  DEFAULT_DEV_ENV_CANDIDATES,
+  assertLoopbackDatabaseUrl,
+  pickEnvFile,
+  resolvePreviewOrigin,
+} from './qlmed-dev-preview-env.mjs';
 
-process.loadEnvFile('/srv/qlmed/env/app.env');
+const envFile = pickEnvFile([
+  process.env.QLMED_PREVIEW_ENV,
+  ...DEFAULT_DEV_ENV_CANDIDATES,
+]);
+process.loadEnvFile(envFile);
 
-let dbUrl = process.env.DATABASE_URL || '';
-try {
-  await dns.lookup('qlmed-db');
-} catch {
-  dbUrl = dbUrl.replace('qlmed-db', '127.0.0.1');
+assertLoopbackDatabaseUrl(process.env.DATABASE_URL);
+
+function tailscaleIpv4() {
+  const r = spawnSync('tailscale', ['ip', '-4'], { encoding: 'utf8' });
+  if (r.status !== 0) return '';
+  return (r.stdout || '').trim().split(/\s+/)[0] || '';
 }
+
+const origin = resolvePreviewOrigin({
+  override: process.env.QLMED_PREVIEW_ORIGIN,
+  tailscaleIp: tailscaleIpv4(),
+});
 
 const cwd =
   process.env.QLMED_PREVIEW_CWD || '/home/marce/qlmed/.worktrees/preview';
 
 const env = {
   ...process.env,
-  DATABASE_URL: dbUrl,
-  NEXTAUTH_URL: 'http://100.83.11.58:3002',
+  NEXTAUTH_URL: origin,
   PORT: '3002',
   HOST: '0.0.0.0',
-  // Preview nunca dispara WhatsApp/jobs de produção (resumo diário etc.).
   DAILY_SUMMARY_NATIVE: '0',
   QLMED_DISABLE_BACKGROUND_SERVICES: 'true',
 };

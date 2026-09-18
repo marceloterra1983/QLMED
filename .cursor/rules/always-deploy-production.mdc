@@ -13,7 +13,7 @@ já autorizada), **suba produção**. Não pergunte “quer deploy?”.
 Se a mudança afeta UI, login, rotas Next ou comportamento no browser:
 
 1. Use o preview canônico `/home/marce/qlmed/.worktrees/preview` na porta
-   **3002** (`http://100.83.11.58:3002`, unit `qlmed-dev-preview`).
+   **3002** (`http://100.68.84.119:3002`, unit `qlmed-dev-preview`).
 2. Garanta que o preview está servindo o código da mudança (checkout/rebase
    do tip na worktree preview, ou `cwd` do starter na worktree da feature).
 3. Smoke rápido (HTTP no preview + checagem visual/login se couber).
