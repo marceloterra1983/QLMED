@@ -7,11 +7,19 @@
 import {
   DatabaseConfigurationError,
   validateCanonicalDatabaseConfig,
+  assertDisposableCiReplay,
 } from '../src/lib/database-config.ts';
 
+const ciReplay = process.argv.includes('--ci-replay');
+
 try {
-  validateCanonicalDatabaseConfig();
-  console.log('QLMED database configuration is canonical (DATABASE_URL only).');
+  if (ciReplay) {
+    assertDisposableCiReplay();
+    console.log('QLMED database configuration is disposable qlmed_ci (replay).');
+  } else {
+    validateCanonicalDatabaseConfig();
+    console.log('QLMED database configuration is canonical (DATABASE_URL only).');
+  }
 } catch (error) {
   const message =
     error instanceof DatabaseConfigurationError

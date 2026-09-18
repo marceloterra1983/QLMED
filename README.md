@@ -13,9 +13,9 @@ Modelo operacional do projeto:
 - `Evolution` fica somente em prod (vps2)
 - produção: um PostgreSQL canônico `postgres` na vps2, só via `DATABASE_URL`;
   não existe `qlmed_dev`
-- o host `dev` usa restore isolado (Postgres local em `127.0.0.1`, nome
-  `postgres`) ou o sidecar `qlmed_ci` (`127.0.0.1:5433`); nunca aponta
-  `DATABASE_URL` para a vps2 — [ADR-0019](docs/decisions/0019-dev-isolated-restore-vps2-writer.md)
+- o host `dev` alcança o writer via túnel SSH `127.0.0.1:5435` (Next/preview);
+  replay/CI usa `qlmed_ci` em `127.0.0.1:5433` —
+  [ADR-0020](docs/decisions/0020-omarchy-next-canonical-writer-tunnel.md)
 - o CI usa `qlmed_ci` apenas como banco efêmero de testes
 
 ## Desenvolvimento

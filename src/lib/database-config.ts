@@ -119,3 +119,15 @@ export function getCanonicalDatabaseUrl(
   validateCanonicalDatabaseConfig(env);
   return env.DATABASE_URL!.trim();
 }
+
+export function assertDisposableCiReplay(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): CanonicalDatabaseTarget {
+  const target = validateCanonicalDatabaseConfig(env);
+  if (target.databaseName !== 'qlmed_ci') {
+    throw new DatabaseConfigurationError(
+      'Migration replay/verify must target disposable qlmed_ci, not the canonical postgres writer',
+    );
+  }
+  return target;
+}

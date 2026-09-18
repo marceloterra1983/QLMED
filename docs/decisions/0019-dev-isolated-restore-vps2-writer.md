@@ -1,6 +1,6 @@
 ---
 id: ADR-0019
-status: accepted
+status: superseded
 date: 2026-09-17
 supersedes: ADR-0007
 related_specs: []
@@ -8,7 +8,9 @@ related_specs: []
 
 # ADR-0019 — Isolamento de hosts: dev local e writer vps2
 
-- **Status:** accepted
+- **Status:** superseded by [ADR-0020](./0020-omarchy-next-canonical-writer-tunnel.md)
+  (cláusula “dev não aponta DATABASE_URL à vps2”). Writer vps2, `qlmed_ci` e
+  a recusa de `qlmed_dev` permanecem.
 - **Date:** 2026-09-17
 - **Supersedes:** a parte operacional de [ADR-0007](./0007-single-canonical-database.md)
   que autorizava o processo local a usar o PostgreSQL persistente canônico.

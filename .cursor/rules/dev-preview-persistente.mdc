@@ -23,8 +23,9 @@ Não pergunte se quer preview; use-o. Não suba outro Next.
    `systemd-run --user --unit=qlmed-dev-preview` com o starter).
    Nunca deixar Next só no bash do chat.
 3. **Env (nunca printar):** herdar `~/qlmed/app/.env`. Proibido
-   `/srv/qlmed/env/app.env` neste host (ADR-0019). `DATABASE_URL` só
-   `127.0.0.1` (isolado `:5434`).
+   `/srv/qlmed/env/app.env` neste host. `DATABASE_URL` = túnel
+   `127.0.0.1:5435` → vps2 `postgres` (ADR-0020). Dump isolado `:5434`
+   o starter recusa. Workers de fundo desligados.
 4. **Login HTTP:** `NEXTAUTH_URL=http://100.68.84.119:3002` (ver `src/lib/env.ts`).
    Herdar `https://app.qlmed.com.br` → cookie Secure → “Erro ao fazer login”.
 5. **Feature com UI:** rebase/merge/checkout do tip da feature **nesta**

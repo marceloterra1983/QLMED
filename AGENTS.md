@@ -44,10 +44,11 @@ npm run db:reconcile:verify
 
 - Never read, print, add or commit `.env` files or backups.
 - Production has one persistent canonical PostgreSQL (`postgres`) on **vps2**
-  through `DATABASE_URL`. The `dev` host must restore a dump into local Postgres
-  (`postgres` or disposable `qlmed_ci` on `127.0.0.1:5433`) and must not point
-  `DATABASE_URL` at vps2. Do not create `qlmed_dev` or parallel URL aliases.
-  See [ADR-0019](docs/decisions/0019-dev-isolated-restore-vps2-writer.md).
+  through `DATABASE_URL`. On Omarchy, Next (`:3000` / preview `:3002`) reaches
+  that writer via SSH tunnel `127.0.0.1:5435` ([ADR-0020](docs/decisions/0020-omarchy-next-canonical-writer-tunnel.md)).
+  CI and `db:migrate:verify` use disposable `qlmed_ci` on `127.0.0.1:5433`.
+  Do not create `qlmed_dev` or parallel URL aliases. `migrate deploy` on the
+  writer is ROLE-001 (production workflow only).
 - `ops/scripts/qlmed-dev-reseed.sh` still exists on disk and targets
   `qlmed_dev`, which no longer exists — do not run it.
 - Do not run deploy, publish, migration deploy or production scripts unless the
@@ -110,13 +111,14 @@ Complements the rules above.
 
 Host de desenvolvimento: Omarchy `dev`, checkout `~/qlmed/app`.
 Writer de produção: **vps2**. O host `server` não tem papel QLMED (será destruído).
-n8n não existe mais. Ver [ADR-0019](docs/decisions/0019-dev-isolated-restore-vps2-writer.md).
+n8n não existe mais. Ver [ADR-0020](docs/decisions/0020-omarchy-next-canonical-writer-tunnel.md).
 
 ### Diretórios
 
 - `/home/marce/qlmed/app/` — checkout canônico com Git
-  - `DATABASE_URL` no `dev` = Postgres isolado em `127.0.0.1:5434` (nome
-    `postgres`) ou sidecar `qlmed_ci` em `127.0.0.1:5433`. Nunca a vps2.
+  - `DATABASE_URL` do Next neste `dev` = túnel `127.0.0.1:5435` → vps2
+    `postgres` (ADR-0020). Replay/CI = `qlmed_ci` em `127.0.0.1:5433`.
+    Dump isolado `:5434` não alimenta o preview.
   - `npm run dev` na porta **3000**. Preview: `~/qlmed/.worktrees/preview` **:3002**.
   - `ops/` versionado no checkout.
 - `/home/marce/qlmed/production/` — staging do builder `qlmed-prod` neste `dev`
@@ -137,7 +139,7 @@ curl http://127.0.0.1:13000/api/health   # na vps2
 
 Scripts de app (`dev`, `build`, `lint`, `db:*`) estão em `package.json`.
 `npm run dev` sobe o Next em `0.0.0.0:3000` (não `localhost`); no `dev` o
-Postgres isolado publica `127.0.0.1:5434`.
+túnel do writer publica `127.0.0.1:5435`.
 
 ### Deploy e migração de schema
 
@@ -184,6 +186,8 @@ smoke em `:3002`, **depois** PR/merge/deploy.
   `http://100.68.84.119:3002`. Herdar `https://app.qlmed.com.br` → cookie
   `Secure`/`__Host-` → CSRF drop → catch do `signIn` = “Erro ao fazer login”.
   Senha errada é outra mensagem (“Senha inválida”).
+- `DATABASE_URL`: túnel `127.0.0.1:5435` (writer vps2). Dump `:5434` o starter
+  recusa. Workers de fundo desligados (`QLMED_DISABLE_BACKGROUND_SERVICES`).
 - Diagnóstico refused: `ss` sem listen = processo morto (`systemctl --user
   restart qlmed-dev-preview`). Curl local 200/307 + Windows refused =
   Tailscale/browser (IPv6: Next pode não ouvir `[::]`).
