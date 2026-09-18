@@ -43,15 +43,13 @@ npm run db:reconcile:verify
 ## Safety boundaries
 
 - Never read, print, add or commit `.env` files or backups.
-- QLMED has one persistent canonical PostgreSQL database (`postgres`) configured
-  only through `DATABASE_URL`; do not create or expect a `qlmed_dev` database,
-  arbitrary database name or parallel database URL aliases. CI may use its
-  disposable `qlmed_ci` service. Local development against the canonical
-  database is allowed only with protected credentials, background services
-  disabled, and a current backup receipt.
+- Production has one persistent canonical PostgreSQL (`postgres`) on **vps2**
+  through `DATABASE_URL`. The `dev` host must restore a dump into local Postgres
+  (`postgres` or disposable `qlmed_ci` on `127.0.0.1:5433`) and must not point
+  `DATABASE_URL` at vps2. Do not create `qlmed_dev` or parallel URL aliases.
+  See [ADR-0019](docs/decisions/0019-dev-isolated-restore-vps2-writer.md).
 - `ops/scripts/qlmed-dev-reseed.sh` still exists on disk and targets
-  `qlmed_dev`, which no longer exists — do not run it without reviewing
-  first.
+  `qlmed_dev`, which no longer exists — do not run it.
 - Do not run deploy, publish, migration deploy or production scripts unless the
   user explicitly requests that external effect.
 - Schema changes use versioned Prisma migrations. Runtime DDL is legacy and
@@ -108,59 +106,38 @@ Complements the rules above.
 - **Ask first:** `db:migrate:deploy`, publish, production scripts, new dependency.
 - **Never:** delete or weaken a failing test; mock company isolation / auth / money to go green; import a package not in the lockfile (`npm ls <pkg>` first).
 
-## Infraestrutura e ambiente (host atual, plano de migração para VPS própria)
+## Infraestrutura e ambiente
 
-Movido de `ops/CLAUDE.md` em 27/08/2026 — o repositório `ops` é o control plane do
-host compartilhado e não deve carregar conhecimento de aplicação QLMED. O dono
-pretende migrar o produto QLMED inteiro (dev + produção) para uma VPS própria no
-futuro; até lá, este é o ambiente real.
+Host de desenvolvimento: Omarchy `dev`, checkout `~/qlmed/app`.
+Writer de produção: **vps2**. O host `server` não tem papel QLMED (será destruído).
+n8n não existe mais. Ver [ADR-0019](docs/decisions/0019-dev-isolated-restore-vps2-writer.md).
 
 ### Diretórios
 
-- `/home/marce/qlmed/app/` — checkout canônico com Git (alias `app-dev` → mesmo tree)
-  - Env no host: `app/.env` muitas vezes não existe (`.env.enc`). Herdar
-    `/srv/qlmed/env/app.env` sem imprimir. Se `qlmed-db` não resolver,
-    `DATABASE_URL` com host `127.0.0.1:5432` (`qlmed-db` publica essa porta)
-  - `npm run dev` usa a porta **3000** e mata o que estiver nela; a porta 3001
-    está reservada pelo Uptime Kuma — não suba o compose de dev nela sem
-    resolver o conflito. Preview canônico = worktree
-    `/home/marce/qlmed/.worktrees/preview` na **única porta 3002**
-    (unit `qlmed-dev-preview`, URL `http://100.83.11.58:3002`).
-    Proibido subir QLMED em 3003/3004. Feature com UI: rebase/checkout
-    nessa worktree — não suba outro Next. Validar no preview **antes**
-    de merge/deploy.
-  - `ops/` — scripts, unidades systemd, compose e evidence operacionais
-    (watchdogs, backups, sync CT-e, resumo diário, speckit-updater). Migrado
-    de `ops/qlmed/` em 27/08/2026; os symlinks vivos em
-    `/etc/systemd/system/` apontam pra cá. Atalho de conveniência:
-    `/home/marce/qlmed/ops` → `/home/marce/qlmed/app/ops`.
-- `/srv/qlmed/` — raiz de deploy de produção (`/home/marce/qlmed/production` é
-  symlink de compatibilidade)
-  - `app/` — código-fonte deployado por GitHub Actions, **não é um repo Git**
-  - `docker-compose.yml` — orquestra `qlmed-app`, `qlmed-db`, `qlmed-n8n`, `qlmed-n8n-db`
-  - `.env` — segredos de stack (`POSTGRES_PASSWORD`, `QLMED_API_KEY`, `EVOLUTION_*`)
-  - `env/app.env` / `env/n8n.env` — env por serviço
-- `/home/marce/qlmed/actions-runner-qlmed-prod/` — runner self-hosted (`qlmed-prod`)
-  - `_work/QLMED/QLMED/` — checkout do runner (`deploy-production.yml`)
+- `/home/marce/qlmed/app/` — checkout canônico com Git
+  - `DATABASE_URL` no `dev` = Postgres isolado em `127.0.0.1:5434` (nome
+    `postgres`) ou sidecar `qlmed_ci` em `127.0.0.1:5433`. Nunca a vps2.
+  - `npm run dev` na porta **3000**. Preview: `~/qlmed/.worktrees/preview` **:3002**.
+  - `ops/` versionado no checkout.
+- `/home/marce/qlmed/production/` — staging do builder `qlmed-prod` neste `dev`
+- `/srv/qlmed/` **na vps2** — runtime (`app/` sem Git, compose, env, volumes)
+- `/srv/qlmed/actions-runner-qlmed-prod/` neste `dev` — listener do deploy
 
 ### Integrações externas
 
 Sefaz (NF-e), NSDocs, Receita Federal (NFS-e), ANVISA, OneDrive (sync de XML),
-Evolution API (WhatsApp), n8n (automação de workflow).
+Evolution API (WhatsApp). n8n aposentado.
 
 ### Comandos comuns
 
 ```bash
-# Stack Docker (rodar de /srv/qlmed/)
-docker compose --project-name qlmed --env-file .env up -d --build
-docker compose --project-name qlmed --env-file .env up -d --build qlmed-app
-docker compose --project-name qlmed logs -f qlmed-app
-curl http://127.0.0.1:13000/api/health
+# Produção: somente na vps2, via workflow_dispatch — não compose up neste host
+curl http://127.0.0.1:13000/api/health   # na vps2
 ```
 
 Scripts de app (`dev`, `build`, `lint`, `db:*`) estão em `package.json`.
-`npm run dev` sobe o Next em `0.0.0.0:3000` (não `localhost`); acesso ao banco
-pelo host é `127.0.0.1:5432`, publicado pelo serviço `qlmed-db`.
+`npm run dev` sobe o Next em `0.0.0.0:3000` (não `localhost`); no `dev` o
+Postgres isolado publica `127.0.0.1:5434`.
 
 ### Deploy e migração de schema
 
