@@ -30,14 +30,14 @@ Escritos antes do fan-out porque as folhas partilham superfícies:
 
 | # | Item do backlog | Superfície | Estado |
 |---|---|---|---|
-| L2 | ACL default-deny | `src/lib/auth.ts`, middleware, `/api/users` | — |
-| L3 | Credenciais e borda | webhook n8n, allowlist de host, nextLink Graph | — |
-| L4 | Segredos em repouso | `pfxData`, crypto, logger, GET invoice | — |
-| L5 | Uploads | upload XML, XLSX, PDF/OCR, Chromium, basename | — |
-| L6 | IMPCG/CASSEMS | OneDrive na TX, WhatsApp outbox, `ok` honesto, AccessLog | — |
-| L7 | Cursor de sincronização | NSU SEFAZ/Receita, lock de run | — |
-| L8 | Dados | FK satélites, Decimal, schema, migrações | — |
-| L9 | Operação | path filter CI, `deploy:server`, docs | — |
+| L2 | ACL default-deny | `src/lib/auth.ts`, middleware, `/api/users` | feito (`specs/verifications/leaf-reports/L2-acl.md`) |
+| L3 | Credenciais e borda | webhook n8n, allowlist de host, nextLink Graph | feito (`L3-borda.md`) |
+| L4 | Segredos em repouso | `pfxData`, crypto, logger, GET invoice | feito (`L4-segredos.md`) |
+| L5 | Uploads | upload XML, XLSX, PDF/OCR, Chromium, basename | feito (`L5-uploads.md`) |
+| L6 | IMPCG/CASSEMS | OneDrive na TX, WhatsApp outbox, `ok` honesto, AccessLog | feito (`L6-oficios.md`) |
+| L7 | Cursor de sincronização | NSU SEFAZ/Receita, lock de run | feito (`L7-cursor.md`) |
+| L8 | Dados | FK satélites, Decimal, schema, migrações | feito (`L8-dados.md`); Float residual segue SPEC-004 |
+| L9 | Operação | path filter CI, `deploy:server`, docs | feito (`L9-ops.md`) |
 
 L10 (testes P0) não é folha: cada folha traz o seu teste. O que sobrar de
 cobertura vira gate meu na integração.
@@ -47,6 +47,10 @@ cobertura vira gate meu na integração.
 - 2026-09-01: PR #249 aberto (item 1). CI verde exceto `Dependency audit`.
 - 2026-09-01: dispensa nominal do GHSA-3f6p-5ww8-9rcr commitada; portão de
   dependências passa a ser `scripts/verify-dependency-audit.mjs`.
+- 2026-09-18: L2–L9 marcadas feitas — código e leaf-reports já estavam em
+  `main`; o PLAN é que ficou stale. Residuais operacionais e N-001/N-002
+  continuam em `specs/verifications/REMEDIACAO-b177b07-NOTAS.md`. SPEC-004
+  T009 (25 sidecars Decimal de dinheiro) segue noutro PR desta fila.
 
 ## Findings deliberadamente fora das folhas
 

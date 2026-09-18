@@ -1,5 +1,9 @@
 # Tasks: Autorizações IMPCG em Gestão
 
+> **Implemented.** `spec.md` status = implemented; página, models e
+> `src/lib/impcg/constants.ts` estão em `main`. Checkboxes abaixo ficaram
+> stale — o contrato é o spec, não esta lista.
+
 **Input**: Design documents from `/specs/023-gestao-impcg-autorizacoes/`
 
 **Prerequisites**: [plan.md](./plan.md), [spec.md](./spec.md),

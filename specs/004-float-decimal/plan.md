@@ -44,13 +44,13 @@ the previous application image.
 3. Dual-write from `invoice-duplicata-store` with tests. **Done.**
 4. Prove replay/drift on `qlmed_ci`. **Done.**
 5. **Stop for human authorization** before any production apply.
-6. Later PRs: remaining 77 columns, then contract, then HTTP types.
+6. Later PRs: remaining tax/rate/quantity columns, then contract, then HTTP types.
 
 ## Inventory (80 `Float`)
 
 | Category | Count | First slice |
 |---|---|---|
-| Money amounts | 28 | `InvoiceDuplicata`: `dupValor`, `faturaValorOriginal`, `faturaValorLiquido` (3) |
+| Money amounts | 28 | `InvoiceDuplicata` 3 **done**; T009 remaining 25 **expanded** (`stock_entry` 15, `nfe_entry_item` 8, `invoice_item_tax` unit/total 2) |
 | Tax amounts | 33 | later PRs |
 | Rates / alíquotas | 13 | later PRs |
 | Quantities | 5 | later PRs |

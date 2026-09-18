@@ -28,6 +28,9 @@ const mocks = vi.hoisted(() => ({
   stockEntryFindUnique: vi.fn(),
   stockEntryCreate: vi.fn(),
   stockEntryUpdate: vi.fn(),
+  stockEntryUpdateMany: vi.fn(),
+  nfeEntryItemDeleteMany: vi.fn(),
+  nfeEntryItemCreateMany: vi.fn(),
   // product-settings-catalog
   catalogFindMany: vi.fn(),
   catalogUpsert: vi.fn(),
@@ -76,6 +79,11 @@ vi.mock('@/lib/prisma', () => ({
       findUnique: mocks.stockEntryFindUnique,
       create: mocks.stockEntryCreate,
       update: mocks.stockEntryUpdate,
+      updateMany: mocks.stockEntryUpdateMany,
+    },
+    nfeEntryItem: {
+      deleteMany: mocks.nfeEntryItemDeleteMany,
+      createMany: mocks.nfeEntryItemCreateMany,
     },
     productSettingsCatalog: {
       findMany: mocks.catalogFindMany,
@@ -116,6 +124,10 @@ beforeEach(() => {
       invoiceDuplicata: {
         deleteMany: mocks.duplicataDeleteMany,
         createMany: mocks.duplicataCreateMany,
+      },
+      nfeEntryItem: {
+        deleteMany: mocks.nfeEntryItemDeleteMany,
+        createMany: mocks.nfeEntryItemCreateMany,
       },
     };
     return fn(tx);
@@ -202,6 +214,10 @@ describe('invoice-tax-store Prisma CRUD', () => {
     ]);
     expect(mocks.itemTaxDeleteMany).toHaveBeenCalledWith({ where: { invoiceId: 'inv-1' } });
     expect(mocks.itemTaxCreateMany).toHaveBeenCalledOnce();
+    const itemPersisted = mocks.itemTaxCreateMany.mock.calls[0][0].data[0];
+    expect(itemPersisted.unitPrice).toBe(10);
+    expect(itemPersisted.unitPriceDecimal.toFixed(2)).toBe('10.00');
+    expect(itemPersisted.totalValueDecimal.toFixed(2)).toBe('10.00');
   });
 });
 
@@ -509,6 +525,9 @@ describe('stock-entry-store Prisma CRUD', () => {
         data: expect.objectContaining({ companyId: 'co-1', invoiceId: 'inv-1' }),
       }),
     );
+    const created = mocks.stockEntryCreate.mock.calls[0][0].data;
+    expect(created.totalValue).toBeNull();
+    expect(created.totalValueDecimal).toBeNull();
 
     mocks.stockEntryFindUnique.mockResolvedValueOnce(base);
     mocks.stockEntryUpdate.mockResolvedValue({
@@ -525,6 +544,52 @@ describe('stock-entry-store Prisma CRUD', () => {
         status: 'registered',
       }),
     ).resolves.toMatchObject({ status: 'registered', matchedItems: 2 });
+  });
+
+  it('dual-writes Decimal sidecars on stock_entry fiscal totals', async () => {
+    mocks.stockEntryUpdateMany.mockResolvedValue({ count: 1 });
+    const { updateStockEntryFiscalTotals } = await import('../stock-entry-store');
+    await updateStockEntryFiscalTotals('co-1', 'inv-1', {
+      totVprod: 100,
+      totVdesc: 5.555,
+      totVnf: 94.45,
+    });
+    const persisted = mocks.stockEntryUpdateMany.mock.calls[0][0].data;
+    expect(persisted.totVprod).toBe(100);
+    expect(persisted.totVprodDecimal.toFixed(2)).toBe('100.00');
+    expect(persisted.totVdescDecimal.toFixed(2)).toBe('5.56');
+    expect(persisted.totVnfDecimal.toFixed(2)).toBe('94.45');
+    expect(persisted.totVicmsDecimal).toBeNull();
+  });
+
+  it('dual-writes Decimal sidecars on nfe_entry_item createMany', async () => {
+    mocks.nfeEntryItemDeleteMany.mockResolvedValue({ count: 0 });
+    mocks.nfeEntryItemCreateMany.mockResolvedValue({ count: 1 });
+    const { insertNfeEntryItems } = await import('../stock-entry-store');
+    await insertNfeEntryItems('se-1', [
+      {
+        stockEntryId: 'se-1',
+        companyId: 'co-1',
+        invoiceId: 'inv-1',
+        itemNumber: 1,
+        unitPrice: 12.345,
+        totalValueGross: 24.69,
+        itemDiscount: 0.01,
+        totalValueNet: 24.68,
+        rateioFrete: 1,
+        rateioSeguro: 0,
+        rateioOutrasDesp: 0,
+        rateioDesconto: 0.01,
+      },
+    ]);
+    const persisted = mocks.nfeEntryItemCreateMany.mock.calls[0][0].data[0];
+    expect(persisted.unitPrice).toBe(12.345);
+    expect(persisted.unitPriceDecimal.toFixed(2)).toBe('12.35');
+    expect(persisted.totalValueGrossDecimal.toFixed(2)).toBe('24.69');
+    expect(persisted.itemDiscountDecimal.toFixed(2)).toBe('0.01');
+    expect(persisted.totalValueNetDecimal.toFixed(2)).toBe('24.68');
+    expect(persisted.rateioFreteDecimal.toFixed(2)).toBe('1.00');
+    expect(persisted.rateioDescontoDecimal.toFixed(2)).toBe('0.01');
   });
 });
 

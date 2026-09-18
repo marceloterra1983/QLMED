@@ -29,7 +29,10 @@
 
 ## Later PRs (not this cycle)
 
-- [ ] T009 [US1] Remaining 25 money `Float` columns (expand, then observe).
+- [x] T009 [US1] Remaining 25 money `Float` columns (expand + dual-write).
+  Sidecars: `stock_entry` 15, `nfe_entry_item` 8, `invoice_item_tax`
+  `unitPrice`/`totalValue`. Observation window starts after human production
+  apply (ROLE-001).
 - [ ] T010 [US1] 33 tax amount columns.
 - [ ] T011 [US1] 13 alíquota columns.
 - [ ] T012 [US1] 5 quantity columns + `anvisaConfidence`.
@@ -39,5 +42,6 @@
 ## Checkpoint
 
 The first InvoiceDuplicata expand (T003–T006) is already in this checkout.
-After T008, remaining columns and contract stay later PRs. Human operator
-owns production apply.
+T009 expands the remaining 25 money Floats with Decimal sidecars and dual-write.
+After T008/T009, tax/rate/quantity columns and contract stay later PRs. Human
+operator owns production apply.

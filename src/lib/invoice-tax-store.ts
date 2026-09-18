@@ -1,5 +1,12 @@
 import { randomUUID } from 'crypto';
+import { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
+import { roundMoney } from '@/lib/money';
+
+function toMoneyDecimal(value: number | null | undefined): Prisma.Decimal | null {
+  if (value == null) return null;
+  return new Prisma.Decimal(roundMoney(value).toFixed(2));
+}
 
 // ── Types ──
 
@@ -140,7 +147,9 @@ export async function upsertItemTaxes(
         origem: item.origem,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
+        unitPriceDecimal: toMoneyDecimal(item.unitPrice),
         totalValue: item.totalValue,
+        totalValueDecimal: toMoneyDecimal(item.totalValue),
         cstIcms: item.cstIcms,
         baseIcms: item.baseIcms,
         aliqIcms: item.aliqIcms,
