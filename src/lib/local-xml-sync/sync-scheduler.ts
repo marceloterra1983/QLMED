@@ -233,15 +233,14 @@ async function runCopyFromOneDrive(trigger: 'startup' | 'interval' | 'manual'): 
 }
 
 async function runCopyFromSource(trigger: 'startup' | 'interval' | 'manual'): Promise<void> {
-  if (!COPY_FROM_SOURCE_ENABLED) {
-    await runCopyFromOneDrive(trigger);
-    return;
-  }
   if (copyingFromSource) return;
-
   copyingFromSource = true;
 
   try {
+    if (!COPY_FROM_SOURCE_ENABLED) {
+      await runCopyFromOneDrive(trigger);
+      return;
+    }
     const sourceRoot = await selectExistingCopySourceRoot();
     if (!sourceRoot) {
       if (!warnedMissingCopySource) {

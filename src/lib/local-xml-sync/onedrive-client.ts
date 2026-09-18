@@ -48,6 +48,23 @@ export async function resolveOneDriveItemByPath(
   );
 }
 
+export function shouldDownloadRemoteFile(opts: {
+  remoteSize: number | null;
+  remoteMtimeMs: number;
+  localSize?: number;
+  localMtimeMs?: number;
+}): boolean {
+  if (opts.localSize === undefined || opts.localMtimeMs === undefined) return true;
+  if (opts.localSize <= 0) return true;
+
+  const sameSize = opts.remoteSize !== null ? opts.localSize === opts.remoteSize : true;
+  const remoteMtimeRounded = Number.isFinite(opts.remoteMtimeMs) ? Math.floor(opts.remoteMtimeMs) : null;
+  if (sameSize && (remoteMtimeRounded === null || opts.localMtimeMs >= remoteMtimeRounded)) {
+    return false;
+  }
+  return true;
+}
+
 async function copyOneDriveFileIfNeeded(
   accessToken: string,
   driveId: string,
@@ -64,12 +81,12 @@ async function copyOneDriveFileIfNeeded(
   let shouldDownload = true;
   try {
     const targetStats = await fs.stat(targetFilePath);
-    const sameSize = remoteSize !== null ? targetStats.size === remoteSize : false;
-    const targetMtimeMs = Math.floor(targetStats.mtimeMs);
-    const remoteMtimeRounded = Number.isFinite(remoteMtimeMs) ? Math.floor(remoteMtimeMs) : null;
-    if (sameSize && (remoteMtimeRounded === null || targetMtimeMs >= remoteMtimeRounded)) {
-      shouldDownload = false;
-    }
+    shouldDownload = shouldDownloadRemoteFile({
+      remoteSize,
+      remoteMtimeMs,
+      localSize: targetStats.size,
+      localMtimeMs: Math.floor(targetStats.mtimeMs),
+    });
   } catch {
     // Destino ainda nao existe.
   }
