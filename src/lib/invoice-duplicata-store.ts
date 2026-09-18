@@ -100,6 +100,7 @@ export function extractDuplicatasFast(xmlContent: string): {
 
 async function extractDuplicatasFallback(xmlContent: string): Promise<ParsedXmlDuplicata[]> {
   const result = await parseXmlSafe(xmlContent);
+  if (!result || typeof result !== 'object') return [];
   const nfeProc = result.nfeProc;
   const nfe = nfeProc ? nfeProc.NFe : result.NFe;
   const infNFe = nfe?.infNFe;

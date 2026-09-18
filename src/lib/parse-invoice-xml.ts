@@ -125,7 +125,8 @@ function extractCteTomador(infCte: CTeInfCte): PartyInfo {
   return { cnpj: '', name: '' };
 }
 
-function parseNFe(result: { nfeProc?: NFeProc; NFe?: NFeDoc; [key: string]: unknown }): ParsedInvoice | null {
+function parseNFe(result: { nfeProc?: NFeProc; NFe?: NFeDoc; [key: string]: unknown } | null | undefined): ParsedInvoice | null {
+  if (!result || typeof result !== 'object') return null;
   const nfeProc = (result.nfeProc || result) as NFeProc;
   const nfe = nfeProc?.NFe || result.NFe;
   const infNFe = nfe?.infNFe;
@@ -316,6 +317,7 @@ export async function extractPartyFiscalData(
  */
 export async function parseInvoiceXml(xmlContent: string): Promise<ParsedInvoice | null> {
   const result = await parseXmlSafe(xmlContent);
+  if (!result || typeof result !== 'object') return null;
 
   // Try NF-e first (most common)
   const nfe = parseNFe(result);

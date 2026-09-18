@@ -212,4 +212,13 @@ describe('extractAllTaxData', () => {
     expect(items).toHaveLength(1);
     expect(items[0].productCode).toBe('P001');
   });
+
+  it('não perde totais quando totais e itens parseiam o mesmo XML em paralelo', async () => {
+    const results = await Promise.all(Array.from({ length: 12 }, () => extractAllTaxData(NFE_NORMAL)));
+    for (const { totals, items } of results) {
+      expect(totals?.vnf).toBe(109.75);
+      expect(items).toHaveLength(1);
+      expect(items[0].productCode).toBe('P001');
+    }
+  });
 });

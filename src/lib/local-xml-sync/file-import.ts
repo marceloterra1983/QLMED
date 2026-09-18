@@ -130,13 +130,15 @@ export async function findFilesMissingInDatabase(filePaths: string[]): Promise<s
   const chunks = chunkArray(uniqueKeys, DB_LOOKUP_CHUNK_SIZE);
   for (const chunk of chunks) {
     const rows = await prisma.invoice.findMany({
-      where: { accessKey: { in: chunk } },
-      select: { accessKey: true, xmlContent: true },
+      where: {
+        accessKey: { in: chunk },
+        // Filtra vazio no SQL; selecionar xmlContent materializa TOAST (~500 MB).
+        xmlContent: { not: '' },
+      },
+      select: { accessKey: true },
     });
     for (const row of rows) {
-      if (row.xmlContent && row.xmlContent !== '') {
-        existingKeysWithXml.add(row.accessKey);
-      }
+      existingKeysWithXml.add(row.accessKey);
     }
   }
 
@@ -323,11 +325,29 @@ async function importXmlFile(filePath: string): Promise<void> {
         parseFailureCooldown.delete(absolutePath);
       } catch (backfillErr) {
         log.error({ err: backfillErr }, 'Failed to backfill xmlContent for existing invoice');
+        try {
+          const stats = await fs.stat(absolutePath);
+          parseFailureCooldown.set(absolutePath, {
+            fingerprint: `${stats.size}:${Math.floor(stats.mtimeMs)}`,
+            retryAtMs: Date.now() + PARSE_RETRY_COOLDOWN_MS,
+          });
+        } catch {
+          // Arquivo sumiu entre a falha e o cooldown.
+        }
       }
       return;
     }
 
     log.error({ err: error, file: absolutePath }, 'Falha ao importar XML');
+    try {
+      const stats = await fs.stat(absolutePath);
+      parseFailureCooldown.set(absolutePath, {
+        fingerprint: `${stats.size}:${Math.floor(stats.mtimeMs)}`,
+        retryAtMs: Date.now() + PARSE_RETRY_COOLDOWN_MS,
+      });
+    } catch {
+      // Arquivo sumiu entre a falha e o cooldown.
+    }
   }
 }
 
