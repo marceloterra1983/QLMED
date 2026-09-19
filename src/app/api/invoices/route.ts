@@ -5,7 +5,6 @@ import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { markCompanyForSyncRecovery } from '@/lib/sync-recovery';
 import { getCfopCodesByTag, getCfopTagByCode } from '@/lib/cfop';
-import { ensureLocalXmlSyncNow } from '@/lib/local-xml-sync';
 import { apiError } from '@/lib/api-error';
 import { cacheHeaders } from '@/lib/cache-headers';
 import { createLogger } from '@/lib/logger';
@@ -155,11 +154,8 @@ export async function GET(req: Request) {
     const sort = params.sort || 'emission';
     const { dateFrom, dateTo } = params;
 
-    if (direction === 'issued' && (type === '' || type === 'NFE')) {
-      void ensureLocalXmlSyncNow().catch((syncError) => {
-        log.error({ err: syncError }, '[Invoices] Falha ao forçar sync local de XML');
-      });
-    }
+    // Sync OneDrive/local-xml roda só pelo scheduler de background.
+    // Disparar no GET issued empilhava cópia/CPU na navegação do usuário.
 
     const where: Record<string, unknown> = { companyId: company.id };
 

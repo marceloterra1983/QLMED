@@ -5,6 +5,13 @@ const log = createLogger('unimed-cg/backfill-patient-names');
 
 export const UNIMED_CG_PATIENT_NAME_BACKFILL_LIMIT = 12;
 
+/**
+ * Marcador persistido quando o portal OPME não devolve Beneficiário.
+ * Sai do filtro `patientName IS NULL OR ''` e evita reabrir Chromium a cada tick.
+ * UI/WhatsApp devem tratar via `isUnimedCgPatientNameMissing`.
+ */
+export const UNIMED_CG_PATIENT_NAME_PORTAL_MISS = '—';
+
 export type PatientNameFetch = (processId: string) => Promise<string | null>;
 
 export type BackfillPatientNamesResult = {
@@ -15,6 +22,11 @@ export type BackfillPatientNamesResult = {
 
 function isBlank(name: string | null | undefined): boolean {
   return !name || !name.trim();
+}
+
+export function isUnimedCgPatientNameMissing(name: string | null | undefined): boolean {
+  if (isBlank(name)) return true;
+  return name!.trim() === UNIMED_CG_PATIENT_NAME_PORTAL_MISS;
 }
 
 /**
@@ -142,6 +154,7 @@ export async function backfillMissingUnimedCgPatientNames(input: {
         const name = (await input.fetchBeneficiario(row.processId))?.trim() || null;
         if (!name) {
           missed += 1;
+          await kind.update(row.id, UNIMED_CG_PATIENT_NAME_PORTAL_MISS);
           log.info(
             { kind: kind.label, processId: row.processId },
             'unimed_cg_patient_name_backfill_miss',
@@ -156,6 +169,7 @@ export async function backfillMissingUnimedCgPatientNames(input: {
         );
       } catch (error) {
         missed += 1;
+        await kind.update(row.id, UNIMED_CG_PATIENT_NAME_PORTAL_MISS).catch(() => undefined);
         log.warn(
           {
             kind: kind.label,
