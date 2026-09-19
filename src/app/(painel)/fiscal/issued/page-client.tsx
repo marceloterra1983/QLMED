@@ -16,6 +16,8 @@ import { defaultNfeCollapsedKeys, nfeCollapsibleMonthKeys, resolveCollapsedGroup
 import DateGroupHeader from '@/components/ui/DateGroupHeader';
 import RelativeMonthGroupBody from '@/components/ui/RelativeMonthGroupBody';
 import ListCount from '@/components/ui/ListCount';
+import ListPagination from '@/components/ui/ListPagination';
+import { applyListPageParams, FISCAL_LIST_PAGE_SIZE } from '@/lib/list-pagination';
 import RowActions from '@/components/ui/RowActions';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import { getCfopTagByCode, getCfopTagOptions } from '@/lib/cfop';
@@ -43,6 +45,8 @@ export default function IssuedInvoicesPage() {
   const [dateTo, setDateTo] = useState(() => searchParams.get('to') || '');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
   const [sortBy, setSortBy] = useState('emission');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
@@ -90,6 +94,7 @@ export default function IssuedInvoicesPage() {
     setSelectedYear(year);
     collapsedInitializedRef.current = false;
     setSelected(new Set());
+    setPage(1);
   };
 
   const openModal = (id: string) => { setSelectedInvoiceId(id); setIsModalOpen(true); };
@@ -97,14 +102,14 @@ export default function IssuedInvoicesPage() {
   const openProducts = (id: string) => { setDetailsInvoiceId(id); setDetailsInitialTab('produtos'); setIsDetailsOpen(true); };
 
   useEffect(() => {
-    const timer = setTimeout(() => { setSearch(searchInput); }, 300);
+    const timer = setTimeout(() => { setSearch(searchInput); setPage(1); }, 300);
     return () => clearTimeout(timer);
   }, [searchInput]);
 
   useEffect(() => {
     loadInvoices();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, tagFilter, dateFrom, dateTo, sortBy, sortOrder]);
+  }, [page, search, tagFilter, dateFrom, dateTo, sortBy, sortOrder]);
 
   useEffect(() => {
     watermarkEtagRef.current = null;
@@ -218,7 +223,8 @@ export default function IssuedInvoicesPage() {
 
     if (!silent) setLoading(true);
     try {
-      const params = new URLSearchParams({ page: '1', limit: '5000' });
+      const params = new URLSearchParams();
+      applyListPageParams(params, page, FISCAL_LIST_PAGE_SIZE);
       if (search) params.set('search', search);
       // Datas sempre aplicadas quando preenchidas — busca não anula o período
       // (só "Buscar em todos os anos" limpa dateFrom/dateTo).
@@ -235,7 +241,13 @@ export default function IssuedInvoicesPage() {
         const data = await res.json();
         const loaded: Invoice[] = data.invoices || [];
         setInvoices(loaded);
-        setTotal(data.pagination?.total || 0);
+        setTotal((prev) => data.pagination?.total ?? prev);
+        setPages((prev) => {
+          const next = data.pagination?.pages;
+          if (typeof next === 'number') return Math.max(next, 1);
+          const known = data.pagination?.total ?? prev;
+          return Math.max(1, Math.ceil(known / FISCAL_LIST_PAGE_SIZE));
+        });
         if (loaded.length > 0) {
           const collapse = resolveCollapsedGroupsAfterFetch({
             preserve: silent,
@@ -278,6 +290,7 @@ export default function IssuedInvoicesPage() {
   const handleSort = (field: string) => {
     if (sortBy === field) setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     else { setSortBy(field); setSortOrder('desc'); }
+    setPage(1);
   };
 
   const toggleSelect = (id: string) => {
@@ -523,7 +536,7 @@ export default function IssuedInvoicesPage() {
             <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className={FILTER_INPUT_CLS} />
           </Field>
           <Field label="Tipo de NF-e">
-            <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)} className={FILTER_INPUT_CLS}>
+            <select value={tagFilter} onChange={(e) => { setTagFilter(e.target.value); setPage(1); }} className={FILTER_INPUT_CLS}>
               <option value="">Todos</option>
               {getCfopTagOptions().map((tag) => <option key={tag} value={tag}>{tag}</option>)}
             </select>
@@ -729,7 +742,7 @@ export default function IssuedInvoicesPage() {
         </div>
 
         {/* Footer with year navigation */}
-        <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/30 dark:bg-slate-800/20">
+        <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2 bg-slate-50/30 dark:bg-slate-800/20">
           {search ? (
             <span className="text-xs text-slate-500 dark:text-slate-400">Busca em todos os anos</span>
           ) : (
@@ -738,7 +751,17 @@ export default function IssuedInvoicesPage() {
               {yearNavButtons}
             </div>
           )}
-          <ListCount shown={invoices.length} total={total} noun="nota(s)" />
+          <div className="flex items-center gap-3">
+            <ListCount
+              shown={invoices.length}
+              total={total}
+              noun="nota(s)"
+              page={page}
+              pages={pages}
+              pageSize={FISCAL_LIST_PAGE_SIZE}
+            />
+            <ListPagination page={page} pages={pages} loading={loading} onPageChange={setPage} />
+          </div>
         </div>
       </Card>
 

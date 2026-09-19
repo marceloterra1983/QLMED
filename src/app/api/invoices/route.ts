@@ -24,6 +24,7 @@ import {
   extractCteRemetenteCnpj,
   extractCteRemetenteName,
 } from '@/lib/cte-party-extractors';
+import { parseIncludeTotal, resolveListTotal } from '@/lib/list-pagination';
 
 const log = createLogger('invoices');
 
@@ -153,6 +154,7 @@ export async function GET(req: Request) {
     const { page, limit, search, type, status, direction, order, cfopTag } = params;
     const sort = params.sort || 'emission';
     const { dateFrom, dateTo } = params;
+    const includeTotal = parseIncludeTotal(searchParams.get('includeTotal'));
 
     // Sync OneDrive/local-xml roda só pelo scheduler de background.
     // Disparar no GET issued empilhava cópia/CPU na navegação do usuário.
@@ -293,16 +295,19 @@ export async function GET(req: Request) {
         take: limit,
       });
 
-      const total =
-        page === 1 && searchInvoices.length < limit
-          ? searchInvoices.length
-          : await prisma.invoice.count({ where: searchWhere });
+      const { total, pages } = await resolveListTotal({
+        page,
+        limit,
+        fetchedCount: searchInvoices.length,
+        includeTotal,
+        count: () => prisma.invoice.count({ where: searchWhere }),
+      });
 
       const invoicesWithExtra = await attachExtraFieldsForInvoices(searchInvoices);
 
       return NextResponse.json({
         invoices: invoicesWithExtra,
-        pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+        pagination: { page, limit, total, pages },
       }, { headers: cacheHeaders('list') });
     }
 
@@ -328,10 +333,13 @@ export async function GET(req: Request) {
       take: limit,
     });
 
-    const total =
-      page === 1 && invoices.length < limit
-        ? invoices.length
-        : await prisma.invoice.count({ where });
+    const { total, pages } = await resolveListTotal({
+      page,
+      limit,
+      fetchedCount: invoices.length,
+      includeTotal,
+      count: () => prisma.invoice.count({ where }),
+    });
 
     const invoicesWithExtra = await attachExtraFieldsForInvoices(invoices);
 
@@ -341,7 +349,7 @@ export async function GET(req: Request) {
         page,
         limit,
         total,
-        pages: Math.ceil(total / limit),
+        pages,
       },
     }, { headers: cacheHeaders('list') });
   } catch (error) {

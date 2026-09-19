@@ -16,6 +16,8 @@ import DateGroupHeader from '@/components/ui/DateGroupHeader';
 import { createDateGroupWalker, defaultWalkCollapsedKeys } from '@/lib/list-collapse';
 import { currentMonthItemCount } from '@/lib/nfe-groups';
 import ListCount from '@/components/ui/ListCount';
+import ListPagination from '@/components/ui/ListPagination';
+import { applyListPageParams, FISCAL_LIST_PAGE_SIZE } from '@/lib/list-pagination';
 import RowActions from '@/components/ui/RowActions';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import { downloadFileFromRequest, downloadFileFromUrl } from '@/lib/client-download';
@@ -36,6 +38,8 @@ export default function CtePage() {
   const [dateTo, setDateTo] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
   const [sortBy, setSortBy] = useState('emission');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
@@ -106,6 +110,7 @@ export default function CtePage() {
     setSelectedYear(year);
     setCollapsedInitialized(false);
     setSelected(new Set());
+    setPage(1);
   };
 
   const yearNavButtons = ([null, ...availableYears] as Array<number | null>).map((y) => (
@@ -118,6 +123,7 @@ export default function CtePage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearch(searchInput);
+      setPage(1);
     }, 300);
     return () => clearTimeout(timer);
   }, [searchInput]);
@@ -125,7 +131,7 @@ export default function CtePage() {
   useEffect(() => {
     loadInvoices();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, statusFilter, dateFrom, dateTo, sortBy, sortOrder]);
+  }, [page, search, statusFilter, dateFrom, dateTo, sortBy, sortOrder]);
 
   useEffect(() => {
     const cy = new Date().getFullYear();
@@ -309,7 +315,8 @@ export default function CtePage() {
   async function loadInvoices() {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: '1', limit: '5000' });
+      const params = new URLSearchParams();
+      applyListPageParams(params, page, FISCAL_LIST_PAGE_SIZE);
       if (search) params.set('search', search);
       if (statusFilter) params.set('status', statusFilter);
       if (dateFrom) params.set('dateFrom', dateFrom);
@@ -324,7 +331,13 @@ export default function CtePage() {
         const data = await res.json();
         const loaded: Invoice[] = data.invoices || [];
         setInvoices(loaded);
-        setTotal(data.pagination?.total || 0);
+        setTotal((prev) => data.pagination?.total ?? prev);
+        setPages((prev) => {
+          const next = data.pagination?.pages;
+          if (typeof next === 'number') return Math.max(next, 1);
+          const known = data.pagination?.total ?? prev;
+          return Math.max(1, Math.ceil(known / FISCAL_LIST_PAGE_SIZE));
+        });
         if (!collapsedInitialized && loaded.length > 0) {
           const groupOrder: string[] = [];
           for (const inv of loaded) {
@@ -369,6 +382,7 @@ export default function CtePage() {
       setSortBy(field);
       setSortOrder('desc');
     }
+    setPage(1);
   };
 
   const toggleSelect = (id: string) => {
@@ -469,7 +483,7 @@ export default function CtePage() {
           <Field label="Manifestação">
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
               className={FILTER_INPUT_CLS}
             >
               <option value="">Todos</option>
@@ -749,12 +763,22 @@ export default function CtePage() {
         </div>
 
         {/* Footer with year navigation */}
-        <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/30 dark:bg-slate-800/20">
+        <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2 bg-slate-50/30 dark:bg-slate-800/20">
           <div className="flex items-center gap-1">
             <span className="text-xs text-slate-500 dark:text-slate-400 mr-1.5">Ano:</span>
             {yearNavButtons}
           </div>
-          <ListCount shown={invoices.length} total={total} noun="CT-e(s)" />
+          <div className="flex items-center gap-3">
+            <ListCount
+              shown={invoices.length}
+              total={total}
+              noun="CT-e(s)"
+              page={page}
+              pages={pages}
+              pageSize={FISCAL_LIST_PAGE_SIZE}
+            />
+            <ListPagination page={page} pages={pages} loading={loading} onPageChange={setPage} />
+          </div>
         </div>
       </Card>
       <InvoiceDetailsModal
