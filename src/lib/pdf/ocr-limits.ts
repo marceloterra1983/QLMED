@@ -16,6 +16,21 @@ export const MAX_OCR_PAGES = 40;
 export const OCR_TOTAL_BUDGET_MS = 120_000;
 /** Teto por spawn, ainda menor que o orçamento total. */
 export const OCR_SPAWN_TIMEOUT_MS = 60_000;
+/**
+ * OpenMP do Tesseract/Poppler. Sem isto o OCR come 2–3 cores do mesmo
+ * processo HTTP (SPEC-078).
+ */
+export const OCR_OMP_THREAD_LIMIT = '1';
+/**
+ * DPI da rasterização. Área escala com r²: 200/300 ≈ 44 % dos pixels de 300.
+ * Texto impresso em português continua legível para `-l por`.
+ */
+export const OCR_RASTER_DPI = 200;
+
+/** Env dos filhos OCR: herda o processo e força 1 thread OpenMP. */
+export function ocrChildEnv(): NodeJS.ProcessEnv {
+  return { ...process.env, OMP_THREAD_LIMIT: OCR_OMP_THREAD_LIMIT };
+}
 
 export type OcrDeadline = {
   /** ms restantes para o próximo spawn; 0 quando o orçamento acabou. */

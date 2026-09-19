@@ -15,8 +15,10 @@ import { createLogger } from '@/lib/logger';
 import {
   MAX_OCR_PAGES,
   MAX_PDF_BYTES,
+  OCR_RASTER_DPI,
   createOcrDeadline,
   looksLikePdf,
+  ocrChildEnv,
   parsePdfInfoPages,
   type OcrDeadline,
 } from '@/lib/pdf/ocr-limits';
@@ -37,6 +39,7 @@ async function run(
       encoding: 'utf8',
       timeout,
       maxBuffer: 32 * 1024 * 1024,
+      env: ocrChildEnv(),
     });
     return { stdout: stdout || '', status: 0 };
   } catch (err) {
@@ -101,7 +104,7 @@ export async function extractPdfText(
     const pagePrefix = join(dir, 'page');
     await run(
       'pdftoppm',
-      ['-png', '-r', '300', '-f', '1', '-l', String(MAX_OCR_PAGES), pdfPath, pagePrefix],
+      ['-png', '-r', String(OCR_RASTER_DPI), '-f', '1', '-l', String(MAX_OCR_PAGES), pdfPath, pagePrefix],
       deadline,
     );
     const pages = readdirSync(dir)

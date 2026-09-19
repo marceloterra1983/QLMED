@@ -2,8 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   MAX_OCR_PAGES,
   MAX_PDF_BYTES,
+  OCR_OMP_THREAD_LIMIT,
+  OCR_RASTER_DPI,
   createOcrDeadline,
   looksLikePdf,
+  ocrChildEnv,
   parsePdfInfoPages,
 } from '@/lib/pdf/ocr-limits';
 
@@ -102,7 +105,7 @@ describe.each([
     );
   });
 
-  it('limita a rasterização na origem: pdftoppm recebe -l MAX_OCR_PAGES', async () => {
+  it('limita a rasterização na origem: pdftoppm recebe -l MAX_OCR_PAGES e DPI 200', async () => {
     ocrPathAvailable(3);
 
     await extract(FAKE_PDF);
@@ -112,6 +115,25 @@ describe.each([
     const args = call![1] as string[];
     expect(args).toContain('-l');
     expect(args[args.indexOf('-l') + 1]).toBe(String(MAX_OCR_PAGES));
+    expect(args).toContain('-r');
+    expect(args[args.indexOf('-r') + 1]).toBe(String(OCR_RASTER_DPI));
+    expect(args[args.indexOf('-r') + 1]).not.toBe('300');
+  });
+
+  it('passa OMP_THREAD_LIMIT=1 em todo spawn de OCR (SPEC-078)', async () => {
+    ocrPathAvailable(2);
+
+    await extract(FAKE_PDF);
+
+    const heavy = mocks.run.mock.calls.filter(
+      (c) => c[0] === 'pdftoppm' || c[0] === 'tesseract',
+    );
+    expect(heavy.length).toBeGreaterThan(0);
+    for (const call of heavy) {
+      expect((call[2] as { env?: { OMP_THREAD_LIMIT?: string } }).env?.OMP_THREAD_LIMIT).toBe(
+        OCR_OMP_THREAD_LIMIT,
+      );
+    }
   });
 
   it('não roda mais que MAX_OCR_PAGES tesseract mesmo com 500 PNGs no diretório', async () => {
@@ -186,6 +208,12 @@ describe('magic %PDF e contagem de páginas (FILE-003)', () => {
   it('lê a contagem de páginas da saída do pdfinfo', () => {
     expect(parsePdfInfoPages('Title: x\nPages:          42\nEncrypted: no')).toBe(42);
     expect(parsePdfInfoPages('sem contagem')).toBeNull();
+  });
+});
+
+describe('ocrChildEnv (SPEC-078)', () => {
+  it('força OMP_THREAD_LIMIT=1', () => {
+    expect(ocrChildEnv().OMP_THREAD_LIMIT).toBe(OCR_OMP_THREAD_LIMIT);
   });
 });
 
