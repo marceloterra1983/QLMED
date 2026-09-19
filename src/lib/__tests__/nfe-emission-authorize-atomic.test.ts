@@ -448,4 +448,34 @@ describe('authorizeInvoiceEmission — achados da re-auditoria', () => {
     expect(emission.number).toBeNull();
     expect(emission.accessKey).toBeNull();
   });
+
+  it('SPEC-076 follow-up vê rejeição e não muda cStat; falha do follow-up não derruba a emissão', async () => {
+    const authorize = await loadAuthorize();
+    const followup = vi.fn(async () => {
+      throw new Error('boom');
+    });
+    emission = freshEmission();
+    const result = await authorize(COMPANY_ID, EMISSION_ID, {
+      send: vi.fn(async () => ({
+        outcome: 'rejected' as const,
+        cStat: '539',
+        xMotivo: 'Duplicidade',
+      })),
+      followup,
+    });
+    expect(result).toEqual({ status: 'rejected', cStat: '539', xMotivo: 'Duplicidade' });
+    expect(followup).toHaveBeenCalledWith(
+      expect.objectContaining({ outcome: 'rejected', cStat: '539', xMotivo: 'Duplicidade' }),
+    );
+
+    const silent = vi.fn();
+    emission = freshEmission();
+    invoices = [];
+    const authorized = await authorize(COMPANY_ID, EMISSION_ID, {
+      send: vi.fn(async () => authorizedResponse()),
+      followup: silent,
+    });
+    expect(authorized.status).toBe('authorized');
+    expect(silent).not.toHaveBeenCalled();
+  });
 });
