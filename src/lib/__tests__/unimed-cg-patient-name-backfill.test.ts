@@ -86,4 +86,31 @@ describe('unimed-cg patientName backfill', () => {
       data: { patientName: 'NOME TESTE' },
     });
   });
+
+  it('persiste marcador de miss para não reabrir Chromium no próximo tick', async () => {
+    vi.mocked(prisma.unimedCgProcessReversal.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.unimedCgAuthorization.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.unimedCgDeliveryAuthorization.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.unimedCgPreSolicitation.findMany).mockResolvedValue([
+      { id: 'p1', preSolicitationId: '77602' },
+    ] as never);
+    vi.mocked(prisma.unimedCgPreSolicitation.update).mockResolvedValue({} as never);
+
+    const fetchBeneficiario = vi.fn().mockResolvedValue(null);
+    const { UNIMED_CG_PATIENT_NAME_PORTAL_MISS } = await import(
+      '@/lib/unimed-cg/backfill-patient-names'
+    );
+    const result = await backfillMissingUnimedCgPatientNames({
+      companyId: 'co1',
+      fetchBeneficiario,
+      limitPerKind: 5,
+    });
+
+    expect(result.missed).toBe(1);
+    expect(result.updatedFromPortal).toBe(0);
+    expect(prisma.unimedCgPreSolicitation.update).toHaveBeenCalledWith({
+      where: { id: 'p1' },
+      data: { patientName: UNIMED_CG_PATIENT_NAME_PORTAL_MISS },
+    });
+  });
 });

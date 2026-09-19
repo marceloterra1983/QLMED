@@ -60,7 +60,7 @@ import {
   type ParsedUnimedCgReversal,
 } from './parse-email-kinds';
 import { processEmailHtmlKind, shouldUpgradeOrNewer } from './ingest-email-html';
-import { openOpmePortalSession } from './opme-portal';
+import { openOpmePortalSession, type OpmePortalSession, getOpmePortalCredentialsFromEnv } from './opme-portal';
 import { backfillMissingUnimedCgPatientNames } from './backfill-patient-names';
 import { runUnimedCgBillingMatch } from './billing-match';
 import { prismaUnimedCgDeliveryStore } from './delivery-store';
@@ -552,14 +552,27 @@ export async function runUnimedCgIngest(
     }
   };
 
-  const opmeSession = await openOpmePortalSession();
+  let opmeSession: OpmePortalSession | null = null;
+  let opmeOpenAttempted = false;
+  const ensureOpmeSession = async () => {
+    if (opmeOpenAttempted) return opmeSession;
+    opmeOpenAttempted = true;
+    opmeSession = await openOpmePortalSession();
+    return opmeSession;
+  };
+  const fetchBeneficiarioViaOpme = async (processId: string) => {
+    const session = await ensureOpmeSession();
+    return session ? session.fetchBeneficiario(processId) : null;
+  };
 
   try {
     // Existing rows keep existingSource forever — enrich null patientName here.
-    if (opmeSession) {
+    // Sem credenciais OPME não há portal; com credenciais o Chromium só abre no
+    // primeiro fetchBeneficiario (lazy). Miss persiste "—" e sai da fila.
+    if (getOpmePortalCredentialsFromEnv()) {
       await backfillMissingUnimedCgPatientNames({
         companyId,
-        fetchBeneficiario: (processId) => opmeSession.fetchBeneficiario(processId),
+        fetchBeneficiario: (processId) => fetchBeneficiarioViaOpme(processId),
       });
     }
 
@@ -659,9 +672,7 @@ export async function runUnimedCgIngest(
                   processId: parsed.processId,
                   authorizationNumber: parsed.authorizationNumber,
                   procedureDate: parsed.procedureDate,
-                  patientName: opmeSession
-                    ? await opmeSession.fetchBeneficiario(parsed.processId)
-                    : null,
+                  patientName: await fetchBeneficiarioViaOpme(parsed.processId),
                   location: parsed.location,
                   procedureType: parsed.procedureType,
                   parseStatus: parsed.parseStatus,
@@ -680,9 +691,7 @@ export async function runUnimedCgIngest(
                   processId: parsed.processId,
                   authorizationNumber: parsed.authorizationNumber,
                   procedureDate: parsed.procedureDate,
-                  patientName: opmeSession
-                    ? await opmeSession.fetchBeneficiario(parsed.processId)
-                    : null,
+                  patientName: await fetchBeneficiarioViaOpme(parsed.processId),
                   location: parsed.location,
                   procedureType: parsed.procedureType,
                   parseStatus: parsed.parseStatus,
@@ -756,9 +765,7 @@ export async function runUnimedCgIngest(
                 resolved.preSolicitationStore.persistConfirmed({
                   companyId,
                   preSolicitationId: parsed.preSolicitationId,
-                  patientName: opmeSession
-                    ? await opmeSession.fetchBeneficiario(parsed.preSolicitationId)
-                    : null,
+                  patientName: await fetchBeneficiarioViaOpme(parsed.preSolicitationId),
                   procedureType: parsed.procedureType,
                   quoteDeadlineDays: parsed.quoteDeadlineDays,
                   parseStatus: parsed.parseStatus,
@@ -775,9 +782,7 @@ export async function runUnimedCgIngest(
                   companyId,
                   recordId: entityId,
                   preSolicitationId: parsed.preSolicitationId,
-                  patientName: opmeSession
-                    ? await opmeSession.fetchBeneficiario(parsed.preSolicitationId)
-                    : null,
+                  patientName: await fetchBeneficiarioViaOpme(parsed.preSolicitationId),
                   procedureType: parsed.procedureType,
                   quoteDeadlineDays: parsed.quoteDeadlineDays,
                   parseStatus: parsed.parseStatus,
@@ -850,7 +855,7 @@ export async function runUnimedCgIngest(
                   companyId,
                   processId: parsed.processId,
                   patientName: parsed.patientName
-                    ?? (opmeSession ? await opmeSession.fetchBeneficiario(parsed.processId) : null),
+                    ?? (await fetchBeneficiarioViaOpme(parsed.processId)),
                   parseStatus: parsed.parseStatus,
                   fileName,
                   oneDriveItemId,
@@ -866,7 +871,7 @@ export async function runUnimedCgIngest(
                   deadlineId: entityId,
                   processId: parsed.processId,
                   patientName: parsed.patientName
-                    ?? (opmeSession ? await opmeSession.fetchBeneficiario(parsed.processId) : null),
+                    ?? (await fetchBeneficiarioViaOpme(parsed.processId)),
                   parseStatus: parsed.parseStatus,
                   fileName,
                   oneDriveItemId,
@@ -1040,9 +1045,7 @@ export async function runUnimedCgIngest(
             continue;
           }
 
-          const patientName = opmeSession
-            ? await opmeSession.fetchBeneficiario(parsed.processId)
-            : null;
+          const patientName = await fetchBeneficiarioViaOpme(parsed.processId);
           const persistBase: PersistDeliveryArgs = {
             companyId,
             processId: parsed.processId,
@@ -1202,9 +1205,7 @@ export async function runUnimedCgIngest(
           continue;
         }
 
-        const patientName = opmeSession
-          ? await opmeSession.fetchBeneficiario(parsed.processId)
-          : null;
+        const patientName = await fetchBeneficiarioViaOpme(parsed.processId);
         const persistBase: PersistArgs = {
           companyId,
           processId: parsed.processId,
@@ -1301,7 +1302,9 @@ export async function runUnimedCgIngest(
       lastCollectedAt: ok ? now.toISOString() : previous?.lastSuccessAt?.toISOString() ?? null,
     };
   } finally {
-    await opmeSession?.close().catch(() => undefined);
+    if (opmeSession) {
+      await opmeSession.close().catch(() => undefined);
+    }
     await lock.release();
   }
 }

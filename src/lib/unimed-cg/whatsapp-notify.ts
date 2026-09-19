@@ -14,6 +14,7 @@ import {
   isUnimedCgOcWhatsAppEnabled,
   isUnimedCgWhatsAppEnabled,
 } from './constants';
+import { isUnimedCgPatientNameMissing } from './backfill-patient-names';
 
 const log = createLogger('unimed-cg/whatsapp');
 
@@ -251,7 +252,9 @@ export function buildUnimedCgInvoiceDeadlineWhatsAppCaption(
 ): string {
   return [
     `Prazo de Nota Fiscal Unimed CG — Processo ${fields.processId}`,
-    `Paciente: ${fields.patientName?.trim() || 'não identificado'}`,
+    `Paciente: ${
+      isUnimedCgPatientNameMissing(fields.patientName) ? 'não identificado' : fields.patientName!.trim()
+    }`,
   ].join('\n');
 }
 
