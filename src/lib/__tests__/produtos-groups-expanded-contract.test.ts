@@ -32,10 +32,12 @@ describe('produtos groups collapsed-by-default contract', () => {
     expect(pageClient).not.toContain('filteredLen');
   });
 
-  it('default de status lista todos os produtos do cadastro (Spica)', () => {
-    expect(pageClient).toMatch(
+  it('default de status é Em Linha (SPEC-079)', () => {
+    expect(pageClient).toContain('DEFAULT_PRODUCT_LINE_STATUS');
+    expect(pageClient).not.toMatch(
       /useState<'active' \| 'outOfLine' \| 'all'>\('all'\)/,
     );
+    expect(pageClient).not.toContain("isTreeView ? 'all' : lineStatusFilter");
   });
 
   it('ProductTable nao força expandir via blank-page guard', () => {

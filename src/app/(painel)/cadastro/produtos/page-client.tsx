@@ -14,7 +14,7 @@ import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
 import SettingsModal from './SettingsModal';
 import type { ProductRow, ProductsHierarchyCounts, ProductsSummary, ProductsResponse, SortField } from './types';
 import type { HierOptions } from './components/product-utils';
-import { filterProductRows } from './components/product-utils';
+import { DEFAULT_PRODUCT_LINE_STATUS, filterProductRows } from './components/product-utils';
 import ProductFilters from './components/ProductFilters';
 import ProductDetailModal from './components/ProductDetailModal';
 import BulkEditModal from './components/BulkEditModal';
@@ -61,7 +61,9 @@ export default function ProdutosPage() {
   const [subgroupFilter, setSubgroupFilter] = useState<string>('');
   const [sortBy, setSortBy] = useState<SortField>('productType');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [lineStatusFilter, setLineStatusFilter] = useState<'active' | 'outOfLine' | 'all'>('all');
+  const [lineStatusFilter, setLineStatusFilter] = useState<'active' | 'outOfLine' | 'all'>(
+    DEFAULT_PRODUCT_LINE_STATUS,
+  );
   // Hierarquia Linha > Grupo > Subgrupo: a árvore só faz sentido com o catálogo
   // inteiro (paginar 50 escondia linhas e subgrupos). Ordenações flat paginam.
   const isTreeView = sortBy === 'productType';
@@ -79,7 +81,7 @@ export default function ProdutosPage() {
   const serverType = isTreeView ? '' : typeFilter;
   const serverSubtype = isTreeView ? '' : subtypeFilter;
   const serverSubgroup = isTreeView ? '' : subgroupFilter;
-  const serverLineStatus = isTreeView ? 'all' : lineStatusFilter;
+  const serverLineStatus = lineStatusFilter;
 
   const filtered = useMemo(
     () => (isTreeView
@@ -93,7 +95,9 @@ export default function ProdutosPage() {
       : products),
     [isTreeView, products, search, typeFilter, subtypeFilter, subgroupFilter, lineStatusFilter],
   );
-  const treeFilterActive = Boolean(search || typeFilter || subtypeFilter || subgroupFilter || lineStatusFilter !== 'all');
+  const treeFilterActive = Boolean(
+    search || typeFilter || subtypeFilter || subgroupFilter || lineStatusFilter === 'outOfLine',
+  );
 
   // Na visão Linha a busca é local. Sem isto o contador cai e as linhas
   // continuam atrás de "Clique para expandir".
