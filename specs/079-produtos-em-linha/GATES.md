@@ -8,7 +8,7 @@ Scope: Lista de produtos inicia com Status Em Linha selecionado; árvore não ex
   EVIDENCE: pending
 
 - [ ] G2: default lineStatusFilter é active
-  CHECK: rg -n "useState<'active' \| 'outOfLine' \| 'all'>\\('active'\\)" "src/app/(painel)/cadastro/produtos/page-client.tsx" && echo DEFAULT_ACTIVE_OK
+  CHECK: rg -n "DEFAULT_PRODUCT_LINE_STATUS = 'active'" src/app/\(painel\)/cadastro/produtos/components/product-utils.ts && rg -n "useState<'active' \| 'outOfLine' \| 'all'>\\(" src/app/\(painel\)/cadastro/produtos/page-client.tsx && rg -n "DEFAULT_PRODUCT_LINE_STATUS" src/app/\(painel\)/cadastro/produtos/page-client.tsx && echo DEFAULT_ACTIVE_OK
   EXPECT: DEFAULT_ACTIVE_OK
   EVIDENCE: pending
 
