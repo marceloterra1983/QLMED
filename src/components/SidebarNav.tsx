@@ -289,6 +289,7 @@ export default function SidebarNav({
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={false}
                   onClick={onNavClick}
                   title={collapsed ? item.label : undefined}
                   className={`flex items-center gap-3 rounded-lg transition-colors group ${

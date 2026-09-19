@@ -8,6 +8,7 @@ import Skeleton from '@/components/ui/Skeleton';
 import SortableTh from '@/components/ui/SortableTh';
 import { formatAmount, getDateGroupLabel, formatInvoiceNumber } from '@/lib/utils';
 import DateGroupHeader from '@/components/ui/DateGroupHeader';
+import ListPagination from '@/components/ui/ListPagination';
 import { createDateGroupWalker } from '@/lib/list-collapse';
 import { currentMonthItemCount } from '@/lib/nfe-groups';
 import {
@@ -23,6 +24,9 @@ interface FinanceiroTableProps {
   duplicatas: Duplicata[];
   loading: boolean;
   total: number;
+  page?: number;
+  pages?: number;
+  onPageChange?: (page: number) => void;
   search: string;
   statusFilter: string;
   sortBy: string;
@@ -41,6 +45,9 @@ export default function FinanceiroTable({
   duplicatas,
   loading,
   total,
+  page = 1,
+  pages = 1,
+  onPageChange,
   search,
   statusFilter,
   sortBy,
@@ -249,8 +256,20 @@ export default function FinanceiroTable({
           </div>
 
           {/* Total count */}
-          <div className="flex items-center justify-center px-3 py-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
-            <span className="text-xs text-slate-500 dark:text-slate-400">{total} registros</span>
+          <div className="flex items-center justify-between gap-3 px-3 py-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              {pages > 1
+                ? `${duplicatas.length} nesta página · ${total} registros`
+                : `${total} registros`}
+            </span>
+            {onPageChange && (
+              <ListPagination
+                page={page}
+                pages={pages}
+                loading={loading}
+                onPageChange={onPageChange}
+              />
+            )}
           </div>
         </>
       )}

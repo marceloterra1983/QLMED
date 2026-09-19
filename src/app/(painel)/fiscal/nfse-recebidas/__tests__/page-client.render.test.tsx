@@ -120,16 +120,16 @@ describe('lista fiscal de NFS-e recebidas — render', () => {
     });
   });
 
-  it('avisa truncamento quando o total passa do que foi carregado', async () => {
+  it('mostra o recorte paginado quando o total passa do que foi carregado', async () => {
     stubFetch({ invoices: [nfse()], total: 6000 });
 
     render(<NfseRecebidasPage />);
     await screen.findByRole('table');
 
-    const status = await screen.findAllByRole('status');
-    expect(status.length).toBeGreaterThan(0);
-    expect(status[0].textContent).toContain('1 de 6000 documento(s)');
-    expect(status[0].textContent).toMatch(/truncada/i);
+    await waitFor(() => {
+      expect(screen.getAllByText(/1–1 de 6000 documento\(s\)/).length).toBeGreaterThan(0);
+    });
+    expect(screen.queryByText(/truncada/i)).toBeNull();
   });
 
   it('não avisa truncamento quando carregou tudo', async () => {
