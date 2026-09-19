@@ -74,6 +74,9 @@ export const bulkFieldIconMap: Record<string, { bg: string; color: string }> = {
   toggle_on: { bg: 'bg-rose-500/10 dark:bg-rose-500/20 ring-rose-500/20 dark:ring-rose-500/30', color: 'text-rose-500' },
 };
 
+/** Default da lista de produtos (SPEC-079). A API continua default `all`. */
+export const DEFAULT_PRODUCT_LINE_STATUS = 'active' as const;
+
 export interface HierOptions {
   lines: string[];
   allGroups: string[];
