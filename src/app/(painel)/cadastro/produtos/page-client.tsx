@@ -592,8 +592,9 @@ export default function ProdutosPage() {
         />
       )}
 
-      {/* Invoice detail modal */}
-      <InvoiceDetailsModal isOpen={!!invoiceModalId} onClose={() => setInvoiceModalId(null)} invoiceId={invoiceModalId} />
+      {invoiceModalId && (
+        <InvoiceDetailsModal isOpen onClose={() => setInvoiceModalId(null)} invoiceId={invoiceModalId} />
+      )}
 
       {spicaImportOpen && (
         <ImportSpicaModal

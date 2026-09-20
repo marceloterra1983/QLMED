@@ -45,6 +45,8 @@ Inalterado. Isolamento por empresa inalterado. Sem mudança de contrato HTTP.
    carregam `InvoiceDetailsModal` / `NfeDetailsModal` via `next/dynamic`.
 3. **AC-083-003** — `next.config.mjs` inclui `exceljs`, `jszip` e
    `puppeteer-core` em `serverExternalPackages`.
+4. **AC-083-004** — os wrappers `next/dynamic` de Invoice/NfeDetails só
+   montam quando o modal está aberto (não no first paint).
 
 ## Out of scope
 

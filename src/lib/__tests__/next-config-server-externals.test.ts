@@ -12,3 +12,21 @@ describe('next.config serverExternalPackages', () => {
     }
   });
 });
+
+describe('SPEC-083: modais lazy só montam abertos', () => {
+  it('não hidrata Invoice/NfeDetails fechados', () => {
+    const produtos = readFileSync(
+      resolve(root, 'src/app/(painel)/cadastro/produtos/page-client.tsx'),
+      'utf8',
+    );
+    const contact = readFileSync(resolve(root, 'src/components/ContactDetailsModal.tsx'), 'utf8');
+    const stock = readFileSync(
+      resolve(root, 'src/app/(painel)/estoque/controle/components/ProductStockDetailModal.tsx'),
+      'utf8',
+    );
+    expect(produtos).toContain('{invoiceModalId && (');
+    expect(contact).toContain('{isInvoiceModalOpen && (');
+    expect(contact).toContain('{isNfeDetailsOpen && (');
+    expect(stock).toContain('{nfeInvoiceId && (');
+  });
+});

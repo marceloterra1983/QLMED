@@ -211,11 +211,13 @@ export function StockLotsKardex({
           </ul>
         </div>
       )}
-      <NfeDetailsModal
-        isOpen={!!nfeInvoiceId}
-        onClose={() => setNfeInvoiceId(null)}
-        invoiceId={nfeInvoiceId}
-      />
+      {nfeInvoiceId && (
+        <NfeDetailsModal
+          isOpen
+          onClose={() => setNfeInvoiceId(null)}
+          invoiceId={nfeInvoiceId}
+        />
+      )}
     </div>
   );
 }
