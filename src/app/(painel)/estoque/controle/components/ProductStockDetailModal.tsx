@@ -6,11 +6,13 @@ import Button from '@/components/ui/Button';
 import CardDetailPopupModal from '@/components/ui/CardDetailPopupModal';
 import CardViewModeToggle, { type CardViewMode } from '@/components/ui/CardViewModeToggle';
 import Spinner from '@/components/ui/Spinner';
-import NfeDetailsModal from '@/components/NfeDetailsModal';
+import dynamic from 'next/dynamic';
 import { formatDate, formatInvoiceNumber } from '@/lib/utils';
 import type { StockCatalogProduct } from '@/lib/stock-catalog';
 import type { ValidityBand } from '@/lib/stock-ledger';
 import type { BadgeTone } from '@/components/ui/Badge';
+
+const NfeDetailsModal = dynamic(() => import('@/components/NfeDetailsModal'), { ssr: false });
 
 const VALIDITY_LABEL: Record<ValidityBand, string> = {
   vencido: 'Vencido',
