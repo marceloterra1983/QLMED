@@ -165,8 +165,9 @@ destino público.
 - App: `https://app.qlmed.com.br/` (local: 13000 produção `127.0.0.1` only, 3000
   dev no checkout main; preview canônico **só** `:3002` →
   `.worktrees/preview`)
-- n8n: `https://n8n.qlmed.com.br/` (local: 5678)
 - Evolution API: `https://evolution.qlmed.com.br/` (local: 8085)
+- n8n QLMED: aposentado (SPEC-046 / SPEC-081). Webhook inbound
+  `/api/webhooks/n8n` permanece; `/api/integrations/n8n/*` responde 410.
 - PostgreSQL: `127.0.0.1:5432`, publicado por `qlmed-db` do compose canônico
 
 ### Preview DEV canônico (Tailscale) — obrigatório antes de merge/deploy de UI
