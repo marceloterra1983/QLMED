@@ -22,7 +22,7 @@ const nextConfig = {
   compress: true,
   poweredByHeader: false,
   ...(allowedDevOrigins.length > 0 ? { allowedDevOrigins } : {}),
-  serverExternalPackages: ['bcryptjs', 'node-forge', 'xml2js'],
+  serverExternalPackages: ['bcryptjs', 'node-forge', 'xml2js', 'exceljs', 'jszip', 'puppeteer-core'],
   async headers() {
     return [
       {

@@ -6,8 +6,7 @@ import Modal from '@/components/ui/Modal';
 import { toast } from 'sonner';
 import Skeleton from '@/components/ui/Skeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
-import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
-import NfeDetailsModal from '@/components/NfeDetailsModal';
+import dynamic from 'next/dynamic';
 import { formatDate, formatAmount, formatInt, formatQuantity } from '@/lib/utils';
 import { formatDocument, normalizeDateOnly } from '@/lib/modal-helpers';
 import { parseCnpjResponse, type CnpjResult } from '@/lib/cnpj-result';
@@ -26,6 +25,9 @@ import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
 import Badge from '@/components/ui/Badge';
 import CardViewModeToggle, { type CardViewMode } from '@/components/ui/CardViewModeToggle';
+
+const InvoiceDetailsModal = dynamic(() => import('@/components/InvoiceDetailsModal'), { ssr: false });
+const NfeDetailsModal = dynamic(() => import('@/components/NfeDetailsModal'), { ssr: false });
 
 /**
  * A rota devolve o contato sob `customer` ou `supplier` conforme o tipo;
@@ -489,8 +491,12 @@ export default function ContactDetailsModal({ kind, isOpen, onClose, contact, in
     </Modal>
       )}
 
-      <InvoiceDetailsModal isOpen={isInvoiceModalOpen} onClose={() => setIsInvoiceModalOpen(false)} invoiceId={selectedInvoiceId} />
-      <NfeDetailsModal isOpen={isNfeDetailsOpen} onClose={() => setIsNfeDetailsOpen(false)} invoiceId={detailsInvoiceId} />
+      {isInvoiceModalOpen && (
+        <InvoiceDetailsModal isOpen onClose={() => setIsInvoiceModalOpen(false)} invoiceId={selectedInvoiceId} />
+      )}
+      {isNfeDetailsOpen && (
+        <NfeDetailsModal isOpen onClose={() => setIsNfeDetailsOpen(false)} invoiceId={detailsInvoiceId} />
+      )}
       <ConfirmDialog isOpen={showDeleteConfirm} onClose={() => { setShowDeleteConfirm(false); setDeleteTargetId(null); }} onConfirm={handleDelete} title="Excluir nota fiscal" message="Tem certeza que deseja excluir esta nota fiscal? Esta ação não pode ser desfeita." confirmLabel="Excluir" confirmVariant="danger" />
     </>
   );
