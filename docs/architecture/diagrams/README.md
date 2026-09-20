@@ -1,6 +1,8 @@
-# Diagramas QLMED (draw.io)
+# Diagramas QLMED
 
-Fluxogramas da arquitetura do sistema QLMED (gestão fiscal NF-e/CT-e/NFS-e) e da stack no host `server`.
+Fluxogramas da arquitetura do sistema QLMED (gestão fiscal NF-e/CT-e/NFS-e).
+
+Contexto C4 atual (Excalidraw, AS-IS ADR-0020): [`../qlmed-contexto.excalidraw`](../qlmed-contexto.excalidraw) — canvas local `http://127.0.0.1:3456`.
 
 Fontes: SDD (`/home/marce/specs/server/…`), `docker-compose.yml`,
 `qlmed-app.spec.md`, stack-overview.

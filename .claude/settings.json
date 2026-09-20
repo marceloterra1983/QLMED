@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/marce/.cache/uv/archive-v0/_fb3hfANn398QFpVEn_s6/bin/graphify hook-guard search"
+            "command": "/home/marce/.local/bin/graphify hook-guard search"
           }
         ]
       },
@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/marce/.cache/uv/archive-v0/_fb3hfANn398QFpVEn_s6/bin/graphify hook-guard read"
+            "command": "/home/marce/.local/bin/graphify hook-guard read"
           }
         ]
       }
