@@ -12,6 +12,7 @@ import { createLogger } from '@/lib/logger';
 import { maybeMatchAfterUnimedNfeIssued } from '@/lib/unimed-cg/billing-match';
 import { buildNfeAccessKey, nextInvoiceNumber } from './access-key';
 import { consultarNfeProtocolo, enviarNfeAutorizacao, isDeniedStat, wrapNfeProc } from './autorizacao-client';
+import { adviseSefazFollowup } from './jev-sefaz-followup';
 import { emitenteFromIssuedXml } from './emitente';
 import { destinatarioFromIssuedXml, mergeDestinatario } from './destinatario';
 import { assertCfopMatchesUfs, getSaidaOperation } from './operations';
@@ -29,6 +30,18 @@ import { assertConsignacaoLots, preferredLotsFromItems } from './rastro';
 
 const log = createLogger('nfe-emission');
 
+async function runSefazFollowup(
+  followup: typeof adviseSefazFollowup,
+  input: Parameters<typeof adviseSefazFollowup>[0],
+): Promise<void> {
+  try {
+    await followup(input);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'follow-up failed';
+    log.warn({ emissionId: input.emissionId, err: message }, 'Jev SEFAZ follow-up ignored');
+  }
+}
+
 export function nfeEmissionLockKey(companyId: string): string {
   return `nfe-emission-number:${companyId}`;
 }
@@ -36,6 +49,7 @@ export function nfeEmissionLockKey(companyId: string): string {
 export type AuthorizeDeps = {
   send?: typeof enviarNfeAutorizacao;
   consult?: typeof consultarNfeProtocolo;
+  followup?: typeof adviseSefazFollowup;
 };
 
 export type AuthorizeResult =
@@ -70,6 +84,7 @@ export async function authorizeInvoiceEmission(
 ): Promise<AuthorizeResult> {
   const send = deps.send || enviarNfeAutorizacao;
   const consult = deps.consult || consultarNfeProtocolo;
+  const followup = deps.followup || adviseSefazFollowup;
   const emission = await prisma.invoiceEmission.findFirst({
     where: { id: emissionId, companyId },
   });
@@ -120,7 +135,7 @@ export async function authorizeInvoiceEmission(
   // Já enviada e sem desfecho gravado: a SEFAZ é a fonte da verdade, não o
   // nosso banco. Perguntar pelo protocolo é o que impede a reemissão cega.
   if (emission.status === 'submitted') {
-    return resolveSubmittedEmission(ctx, emission.accessKey, emission.signedXml, consult);
+    return resolveSubmittedEmission(ctx, emission.accessKey, emission.signedXml, consult, followup);
   }
 
   const items: NfeEmissionItem[] = payload.items.map((item) => ({
@@ -267,6 +282,13 @@ export async function authorizeInvoiceEmission(
       where: { id: emission.id },
       data: { sefazStat: result.cStat || null, sefazMotivo: result.xMotivo },
     });
+    await runSefazFollowup(followup, {
+      outcome: 'pending',
+      cStat: result.cStat || '',
+      xMotivo: result.xMotivo,
+      environment,
+      emissionId: emission.id,
+    });
     return { status: 'pending' as const, cStat: result.cStat, xMotivo: result.xMotivo };
   }
 
@@ -285,6 +307,13 @@ export async function authorizeInvoiceEmission(
         sefazMotivo: result.xMotivo,
         ...(denied ? {} : { number: null, accessKey: null }),
       },
+    });
+    await runSefazFollowup(followup, {
+      outcome: 'rejected',
+      cStat: result.cStat,
+      xMotivo: result.xMotivo,
+      environment,
+      emissionId: emission.id,
     });
     return { status: 'rejected' as const, cStat: result.cStat, xMotivo: result.xMotivo };
   }
@@ -313,6 +342,7 @@ async function resolveSubmittedEmission(
   accessKey: string | null,
   signedXml: string | null,
   consult: typeof consultarNfeProtocolo,
+  followup: typeof adviseSefazFollowup,
 ): Promise<AuthorizeResult> {
   if (!accessKey || !signedXml) {
     return {
@@ -412,12 +442,26 @@ async function resolveSubmittedEmission(
       where: { id: ctx.emissionId },
       data: { status: 'rejected', sefazStat: consulta.cStat, sefazMotivo: consulta.xMotivo },
     });
+    await runSefazFollowup(followup, {
+      outcome: 'rejected',
+      cStat: consulta.cStat,
+      xMotivo: consulta.xMotivo,
+      environment: ctx.environment,
+      emissionId: ctx.emissionId,
+    });
     return { status: 'rejected', cStat: consulta.cStat, xMotivo: consulta.xMotivo };
   }
 
   await prisma.invoiceEmission.update({
     where: { id: ctx.emissionId },
     data: { sefazStat: consulta.cStat || null, sefazMotivo: consulta.xMotivo },
+  });
+  await runSefazFollowup(followup, {
+    outcome: 'pending',
+    cStat: consulta.cStat || '',
+    xMotivo: consulta.xMotivo,
+    environment: ctx.environment,
+    emissionId: ctx.emissionId,
   });
   return { status: 'pending', cStat: consulta.cStat, xMotivo: consulta.xMotivo };
 }
