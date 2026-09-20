@@ -1,6 +1,6 @@
 import prisma from '@/lib/prisma';
+import { preferDecimalNumber } from '@/lib/money';
 import { getCfopCodesByTag } from '@/lib/cfop';
-import type { Decimal } from '@prisma/client-runtime-utils';
 import { backfillInvoiceDuplicatas } from '@/lib/invoice-duplicata-store';
 
 export type FinanceiroDirection = 'received' | 'issued';
@@ -47,18 +47,6 @@ const financeiroDuplicatasInFlight =
 if (process.env.NODE_ENV !== 'production') {
   globalForFinanceiro.financeiroDuplicatasCache = financeiroDuplicatasCache;
   globalForFinanceiro.financeiroDuplicatasInFlight = financeiroDuplicatasInFlight;
-}
-
-/**
- * QLMED-DATA-005: invoice_duplicata guarda cada valor duas vezes — a coluna
- * `Float` legada e o sidecar `Decimal` escrito pelo dual-write da SPEC-004. A
- * leitura financeira usava só o `Float`, o que joga fora a precisão que o
- * write path pagou para ter. O sidecar manda; o Float é o fallback das linhas
- * gravadas antes do expand.
- */
-function preferDecimal(decimal: Decimal | null | undefined, legacyFloat: number | null | undefined): number {
-  if (decimal != null) return Number(decimal);
-  return legacyFloat ?? 0;
 }
 
 function toDateKey(date: Date): string {
@@ -217,11 +205,11 @@ async function buildDuplicatas(
         nfEmissao: inv.issueDate,
         nfValorTotal: Number(inv.totalValue || 0),
         faturaNumero: d.faturaNumero || '',
-        faturaValorOriginal: preferDecimal(d.faturaValorOriginalDecimal, d.faturaValorOriginal),
-        faturaValorLiquido: preferDecimal(d.faturaValorLiquidoDecimal, d.faturaValorLiquido),
+        faturaValorOriginal: preferDecimalNumber(d.faturaValorOriginalDecimal, d.faturaValorOriginal) ?? 0,
+        faturaValorLiquido: preferDecimalNumber(d.faturaValorLiquidoDecimal, d.faturaValorLiquido) ?? 0,
         dupNumero: d.dupNumero || '',
         dupVencimento: d.dupVencimento,
-        dupValor: preferDecimal(d.dupValorDecimal, d.dupValor),
+        dupValor: preferDecimalNumber(d.dupValorDecimal, d.dupValor) ?? 0,
       });
     }
   }

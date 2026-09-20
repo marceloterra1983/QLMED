@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import prisma from '@/lib/prisma';
+import { addMoney, preferDecimalNumber } from '@/lib/money';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { fiscalPeriodQuerySchema, getFiscalPeriodRange } from '@/lib/fiscal-period';
 
@@ -46,6 +47,7 @@ export async function GET(req: Request) {
       select: {
         cfop: true,
         totalValue: true,
+        totalValueDecimal: true,
         valorIcms: true,
         valorPis: true,
         valorCofins: true,
@@ -73,7 +75,10 @@ export async function GET(req: Request) {
         byCfop.set(cfop, agg);
       }
       agg.itemCount += 1;
-      agg.totalValue += Number(it.totalValue || 0);
+      agg.totalValue = addMoney(
+        agg.totalValue,
+        preferDecimalNumber(it.totalValueDecimal, it.totalValue) ?? 0,
+      );
       agg.icms += Number(it.valorIcms || 0);
       agg.pis += Number(it.valorPis || 0);
       agg.cofins += Number(it.valorCofins || 0);

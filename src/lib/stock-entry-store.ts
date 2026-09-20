@@ -365,9 +365,13 @@ function mapNfeEntryItem(row: {
   productSubtype: string | null;
   quantity: number | null;
   unitPrice: number | null;
+  unitPriceDecimal?: Prisma.Decimal | null;
   totalValueGross: number | null;
+  totalValueGrossDecimal?: Prisma.Decimal | null;
   itemDiscount: number | null;
+  itemDiscountDecimal?: Prisma.Decimal | null;
   totalValueNet: number | null;
+  totalValueNetDecimal?: Prisma.Decimal | null;
   origem: string | null;
   cstIcms: string | null;
   baseIcms: number | null;
@@ -421,10 +425,10 @@ function mapNfeEntryItem(row: {
     product_type: row.productType,
     product_subtype: row.productSubtype,
     quantity: Number(row.quantity ?? 0),
-    unit_price: Number(row.unitPrice ?? 0),
-    total_value_gross: Number(row.totalValueGross ?? 0),
-    item_discount: Number(row.itemDiscount ?? 0),
-    total_value_net: Number(row.totalValueNet ?? 0),
+    unit_price: preferDecimalNumber(row.unitPriceDecimal, row.unitPrice) ?? 0,
+    total_value_gross: preferDecimalNumber(row.totalValueGrossDecimal, row.totalValueGross) ?? 0,
+    item_discount: preferDecimalNumber(row.itemDiscountDecimal, row.itemDiscount) ?? 0,
+    total_value_net: preferDecimalNumber(row.totalValueNetDecimal, row.totalValueNet) ?? 0,
     origem: row.origem,
     cst_icms: row.cstIcms,
     base_icms: row.baseIcms,
@@ -631,13 +635,13 @@ export async function cloneNfeEntryItemBatch(
       productSubtype: source.productSubtype,
       quantity: source.quantity,
       unitPrice: source.unitPrice,
-      unitPriceDecimal: toMoneyDecimal(source.unitPrice),
+      unitPriceDecimal: source.unitPriceDecimal ?? toMoneyDecimal(source.unitPrice),
       totalValueGross: source.totalValueGross,
-      totalValueGrossDecimal: toMoneyDecimal(source.totalValueGross),
+      totalValueGrossDecimal: source.totalValueGrossDecimal ?? toMoneyDecimal(source.totalValueGross),
       itemDiscount: source.itemDiscount,
-      itemDiscountDecimal: toMoneyDecimal(source.itemDiscount),
+      itemDiscountDecimal: source.itemDiscountDecimal ?? toMoneyDecimal(source.itemDiscount),
       totalValueNet: source.totalValueNet,
-      totalValueNetDecimal: toMoneyDecimal(source.totalValueNet),
+      totalValueNetDecimal: source.totalValueNetDecimal ?? toMoneyDecimal(source.totalValueNet),
       origem: source.origem,
       cstIcms: source.cstIcms,
       baseIcms: source.baseIcms,

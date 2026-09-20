@@ -7,7 +7,7 @@
   "spec_kit": {
     "mode": "required",
     "version": "0.14.2",
-    "feature_root": "specs/084-ci-build-no-bootstrap",
+    "feature_root": "specs/082-decimal-sidecar-reads",
     "validator": "npm run docs:validate"
   },
   "gsd": {
