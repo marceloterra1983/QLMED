@@ -22,3 +22,4 @@
 ## Phase 4: Polish
 
 - [x] T009 `docs:validate`, `tsc --noEmit`, testes do recorte
+- [x] T010 Chamadas seguintes ao Graph reusam o token renovado (P1 Codex)

@@ -1,5 +1,8 @@
 import { assertAllowedHost } from '@/lib/http-allowlist';
-import { refreshBoundOneDriveAccessToken } from '@/lib/onedrive-auth';
+import {
+  refreshBoundOneDriveAccessToken,
+  resolveBoundOneDriveAccessToken,
+} from '@/lib/onedrive-auth';
 
 const GRAPH_BASE_URL = 'https://graph.microsoft.com/v1.0';
 
@@ -11,9 +14,29 @@ export const GRAPH_ALLOWED_HOSTS = ['graph.microsoft.com'] as const;
  */
 export const MAX_ONEDRIVE_DOWNLOAD_BYTES = 25 * 1024 * 1024;
 
+export const ONEDRIVE_RECONNECT_MESSAGE =
+  'Token do OneDrive expirado. Reconecte a conta em Sistema → Configurações.';
+
 type GraphRequestOptions = {
   allowNotFound?: boolean;
 };
+
+function isGraphAuthFailure(status: number, payload: unknown): boolean {
+  if (status === 401) return true;
+  if (!payload || typeof payload !== 'object') return false;
+  const error = (payload as { error?: { code?: string; message?: string } }).error;
+  const code = typeof error?.code === 'string' ? error.code : '';
+  const message = typeof error?.message === 'string' ? error.message : '';
+  return code === 'InvalidAuthenticationToken' || /token is expired|Lifetime validation failed/i.test(message);
+}
+
+export function oneDriveGraphFailureMessage(status: number, payload: unknown): string {
+  if (isGraphAuthFailure(status, payload)) return ONEDRIVE_RECONNECT_MESSAGE;
+  const detail = payload && typeof payload === 'object'
+    ? JSON.stringify(payload).slice(0, 300)
+    : String(status);
+  return `Falha na API do OneDrive: ${detail}`;
+}
 
 /**
  * Resolve o alvo da requisição.
@@ -41,7 +64,10 @@ export async function fetchMicrosoftGraph(
   url: string,
   init: RequestInit = {},
 ): Promise<Response> {
-  let token = accessToken;
+  // Job longo captura o JWT no início: depois do primeiro refresh, as
+  // próximas chamadas ainda passam o token velho. Troca pelo atual antes
+  // de ir ao Graph — senão cada página gera 401 + refresh no IdP.
+  let token = resolveBoundOneDriveAccessToken(accessToken);
   for (let attempt = 0; attempt < 2; attempt++) {
     const headers = new Headers(init.headers);
     headers.set('Authorization', `Bearer ${token}`);
@@ -86,10 +112,7 @@ export async function oneDriveGraphJsonRequest<T>(
 
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
-    const detail = payload && typeof payload === 'object'
-      ? JSON.stringify(payload).slice(0, 300)
-      : `${response.status} ${response.statusText}`;
-    throw new Error(`Falha na API do OneDrive: ${detail}`);
+    throw new Error(oneDriveGraphFailureMessage(response.status, payload));
   }
 
   return payload as T;
@@ -115,7 +138,17 @@ export async function oneDriveGraphDownloadFile(
 
   if (!response.ok) {
     const detail = await response.text().catch(() => `${response.status} ${response.statusText}`);
-    throw new Error(`Falha ao baixar arquivo do OneDrive: ${detail.slice(0, 300)}`);
+    let payload: unknown = detail;
+    try {
+      payload = JSON.parse(detail) as unknown;
+    } catch {
+      payload = { error: { message: detail } };
+    }
+    throw new Error(
+      isGraphAuthFailure(response.status, payload)
+        ? ONEDRIVE_RECONNECT_MESSAGE
+        : `Falha ao baixar arquivo do OneDrive: ${detail.slice(0, 300)}`,
+    );
   }
 
   // Teto por Content-Length antes de materializar o corpo: um item gigante no

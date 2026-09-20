@@ -4,6 +4,7 @@ import {
   resetOneDriveAuthBindingsForTests,
 } from '@/lib/onedrive-auth';
 import {
+  ONEDRIVE_RECONNECT_MESSAGE,
   normalizeOneDrivePath,
   oneDriveGraphJsonRequest,
 } from '@/lib/onedrive-graph';
@@ -51,7 +52,10 @@ describe('OneDrive Graph transport', () => {
       .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'item-1' }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
 
-    const refresh = vi.fn(async () => 'fresh-token');
+    const refresh = vi.fn(async () => {
+      bindOneDriveAccessTokenRefresh('fresh-token', 'conn-1', async () => 'fresh-token');
+      return 'fresh-token';
+    });
     bindOneDriveAccessTokenRefresh('stale-token', 'conn-1', refresh);
 
     await expect(oneDriveGraphJsonRequest<{ id: string }>('stale-token', '/me')).resolves.toEqual({
@@ -74,7 +78,38 @@ describe('OneDrive Graph transport', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(oneDriveGraphJsonRequest('stale-token', '/me')).rejects.toThrow('Falha na API do OneDrive');
+    await expect(oneDriveGraphJsonRequest('stale-token', '/me')).rejects.toThrow(ONEDRIVE_RECONNECT_MESSAGE);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('reuses the refreshed token on later Graph calls without another IdP refresh', async () => {
+    const expired = {
+      error: {
+        code: 'InvalidAuthenticationToken',
+        message: 'Lifetime validation failed, the token is expired.',
+      },
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(expired), { status: 401 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'item-1' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'item-2' }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const refresh = vi.fn(async () => {
+      bindOneDriveAccessTokenRefresh('fresh-token', 'conn-1', async () => 'fresh-token');
+      return 'fresh-token';
+    });
+    bindOneDriveAccessTokenRefresh('stale-token', 'conn-1', refresh);
+
+    await expect(oneDriveGraphJsonRequest<{ id: string }>('stale-token', '/me')).resolves.toEqual({
+      id: 'item-1',
+    });
+    await expect(oneDriveGraphJsonRequest<{ id: string }>('stale-token', '/drive')).resolves.toEqual({
+      id: 'item-2',
+    });
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(authorizationOf(fetchMock.mock.calls[2]?.[1] as RequestInit)).toBe('Bearer fresh-token');
   });
 });

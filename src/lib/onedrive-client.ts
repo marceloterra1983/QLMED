@@ -1,5 +1,5 @@
 import { generateOneDriveOAuthState } from '@/lib/onedrive-oauth-state';
-import { fetchMicrosoftGraph, oneDriveGraphJsonRequest } from '@/lib/onedrive-graph';
+import { fetchMicrosoftGraph, oneDriveGraphFailureMessage, oneDriveGraphJsonRequest } from '@/lib/onedrive-graph';
 
 const GRAPH_SCOPE = 'offline_access User.Read Files.ReadWrite';
 
@@ -184,8 +184,7 @@ async function graphRequest<T>(resourcePath: string, accessToken: string): Promi
   const payload = (await response.json().catch(() => null)) as unknown;
 
   if (!response.ok) {
-    const detail = parseErrorDetails(payload, `${response.status} ${response.statusText}`);
-    throw new Error(`Falha na API do OneDrive: ${detail}`);
+    throw new Error(oneDriveGraphFailureMessage(response.status, payload));
   }
 
   return payload as T;
@@ -248,8 +247,7 @@ async function graphWrite<T>(
   });
   const payload = (await response.json().catch(() => null)) as unknown;
   if (!response.ok) {
-    const detail = parseErrorDetails(payload, `${response.status} ${response.statusText}`);
-    throw new Error(`Falha na API do OneDrive: ${detail}`);
+    throw new Error(oneDriveGraphFailureMessage(response.status, payload));
   }
   return payload as T;
 }
@@ -282,7 +280,7 @@ export async function ensureOneDriveFolder(
     }
     if (existing.status !== 404) {
       const payload = await existing.json().catch(() => null);
-      throw new Error(`Falha na API do OneDrive: ${parseErrorDetails(payload, String(existing.status))}`);
+      throw new Error(oneDriveGraphFailureMessage(existing.status, payload));
     }
 
     const created = await graphWrite<OneDriveItem>(
@@ -331,7 +329,7 @@ export async function uploadOneDriveFile(
   );
   const payload = (await response.json().catch(() => null)) as unknown;
   if (!response.ok) {
-    throw new Error(`Falha na API do OneDrive: ${parseErrorDetails(payload, `${response.status}`)}`);
+    throw new Error(oneDriveGraphFailureMessage(response.status, payload));
   }
   const item = payload as OneDriveItem;
   return { id: item.id, name: item.name };
@@ -354,7 +352,13 @@ async function fetchOneDriveItemContent(
   );
   if (!response.ok) {
     const detail = await response.text().catch(() => `${response.status}`);
-    throw new Error(`Falha ao baixar arquivo do OneDrive: ${detail.slice(0, 300)}`);
+    let payload: unknown = detail;
+    try {
+      payload = JSON.parse(detail) as unknown;
+    } catch {
+      payload = null;
+    }
+    throw new Error(oneDriveGraphFailureMessage(response.status, payload ?? { error: { message: detail } }));
   }
   return response;
 }
