@@ -119,3 +119,9 @@ __pycache__/
 /GATES-env.md
 
 tmp/
+
+# Serena local project index
+.serena/
+
+# Cursor MCP (host URLs / local servers)
+.cursor/mcp.json
