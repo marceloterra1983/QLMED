@@ -143,6 +143,7 @@ export default function DocumentosPageClient() {
       await load({ quiet: true });
     } catch {
       toast.error('Erro de rede ao atualizar');
+      await load({ quiet: true });
     } finally {
       setSyncing(false);
     }

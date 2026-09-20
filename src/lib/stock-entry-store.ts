@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
-import { roundMoney } from '@/lib/money';
+import { preferDecimalNumber, roundMoney } from '@/lib/money';
 
 function toMoneyDecimal(value: number | null | undefined): Prisma.Decimal | null {
   if (value == null) return null;
@@ -52,6 +52,7 @@ function mapStockEntry(row: {
   supplierCnpj: string | null;
   issueDate: Date | null;
   totalValue: number | null;
+  totalValueDecimal?: Prisma.Decimal | null;
   totalItems: number | null;
   matchedItems: number | null;
   status: string;
@@ -68,7 +69,7 @@ function mapStockEntry(row: {
     supplierName: row.supplierName ?? null,
     supplierCnpj: row.supplierCnpj ?? null,
     issueDate: row.issueDate,
-    totalValue: row.totalValue === null || row.totalValue === undefined ? null : Number(row.totalValue),
+    totalValue: preferDecimalNumber(row.totalValueDecimal, row.totalValue),
     totalItems: Number(row.totalItems || 0),
     matchedItems: Number(row.matchedItems || 0),
     status: (row.status || 'pending') as StockEntryRow['status'],

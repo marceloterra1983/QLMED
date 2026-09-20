@@ -7,6 +7,7 @@ import {
   formatCurrency,
   formatMoneyDecimal,
   formatMoneyDecimalString,
+  preferDecimalNumber,
   roundMoney,
   sumMoney,
 } from '@/lib/money';
@@ -51,5 +52,11 @@ describe('money', () => {
 
   it('formatCurrency é alias retrocompatível idêntico a formatMoneyDecimalString', () => {
     expect(formatCurrency).toBe(formatMoneyDecimalString);
+  });
+
+  it('preferDecimalNumber usa sidecar e cai no Float legado', () => {
+    expect(preferDecimalNumber(new Decimal('10.01'), 10.009)).toBe(10.01);
+    expect(preferDecimalNumber(null, 3.5)).toBe(3.5);
+    expect(preferDecimalNumber(null, null)).toBeNull();
   });
 });

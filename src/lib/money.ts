@@ -62,3 +62,21 @@ export function formatMoneyDecimalString(value: unknown): string {
  */
 export const formatCurrency = formatMoneyDecimalString;
 
+/**
+ * Sidecar Decimal manda; Float é fallback das linhas anteriores ao expand.
+ * Devolve null só quando os dois estão vazios.
+ */
+export function preferDecimalNumber(
+  decimal: unknown,
+  legacyFloat: number | null | undefined,
+): number | null {
+  if (decimal != null && decimal !== '') {
+    const n = Number(decimal);
+    if (Number.isFinite(n)) return n;
+  }
+  if (legacyFloat == null) return null;
+  const n = Number(legacyFloat);
+  return Number.isFinite(n) ? n : null;
+}
+
+
