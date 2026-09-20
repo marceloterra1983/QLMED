@@ -140,12 +140,11 @@ describe('INT-009 — nextLink absoluto do Graph não pode levar o Bearer embora
 
     await oneDriveGraphJsonRequest('token', 'https://graph.microsoft.com/v1.0/me?$skiptoken=abc');
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://graph.microsoft.com/v1.0/me?$skiptoken=abc',
-      expect.objectContaining({
-        headers: { Authorization: 'Bearer token', Accept: 'application/json' },
-      }),
-    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('https://graph.microsoft.com/v1.0/me?$skiptoken=abc');
+    const headers = new Headers((fetchMock.mock.calls[0]?.[1] as RequestInit).headers);
+    expect(headers.get('Authorization')).toBe('Bearer token');
+    expect(headers.get('Accept')).toBe('application/json');
   });
 
   it('mantém o caminho relativo funcionando (sem regressão)', async () => {

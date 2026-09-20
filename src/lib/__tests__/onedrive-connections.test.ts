@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   findFirst: vi.fn(),
@@ -29,6 +29,11 @@ vi.mock('@/lib/onedrive-client', () => ({
 describe('onedrive-connections / resolveAccountOneDrive', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('retorna accessToken e driveId da conta encontrada', async () => {
@@ -88,5 +93,97 @@ describe('onedrive-connections / resolveAccountOneDrive', () => {
     ).rejects.toThrow('conta faturamento@ não conectada');
 
     expect(mocks.findFirst).toHaveBeenCalledTimes(1);
+  });
+
+  it('renova o access token quando o Graph ainda está dentro da janela local mas force=true', async () => {
+    mocks.decrypt.mockImplementation((value: string) => {
+      if (value === 'enc-access') return 'old-access';
+      if (value === 'enc-refresh') return 'refresh-token';
+      return value;
+    });
+    mocks.encrypt.mockImplementation((value: string) => `enc-${value}`);
+    mocks.refreshOneDriveAccessToken.mockResolvedValue({
+      access_token: 'new-access',
+      expires_in: 3600,
+      refresh_token: 'refresh-token-2',
+    });
+    mocks.update.mockResolvedValue({});
+
+    const { ensureValidOneDriveAccessToken } = await import('@/lib/onedrive-connections');
+    const token = await ensureValidOneDriveAccessToken({
+      id: 'conn-1',
+      companyId: 'comp-1',
+      accessToken: 'enc-access',
+      refreshToken: 'enc-refresh',
+      tokenExpiresAt: new Date(Date.now() + 3600 * 1000),
+      scope: 'Files.ReadWrite',
+    } as never, { force: true });
+
+    expect(token).toBe('new-access');
+    expect(mocks.refreshOneDriveAccessToken).toHaveBeenCalledWith('refresh-token');
+    expect(mocks.update).toHaveBeenCalledTimes(1);
+  });
+
+  it('não chama o IdP quando o token ainda tem mais de 5 minutos', async () => {
+    mocks.decrypt.mockReturnValue('still-valid');
+
+    const { ensureValidOneDriveAccessToken } = await import('@/lib/onedrive-connections');
+    const token = await ensureValidOneDriveAccessToken({
+      id: 'conn-1',
+      companyId: 'comp-1',
+      accessToken: 'enc-access',
+      refreshToken: 'enc-refresh',
+      tokenExpiresAt: new Date(Date.now() + 3600 * 1000),
+      scope: 'Files.ReadWrite',
+    } as never);
+
+    expect(token).toBe('still-valid');
+    expect(mocks.refreshOneDriveAccessToken).not.toHaveBeenCalled();
+  });
+
+  it('Graph 401 após resolveAccountOneDrive renova e conclui a chamada', async () => {
+    mocks.findFirst.mockResolvedValueOnce({
+      id: 'conn-1',
+      companyId: 'comp-1',
+      accountEmail: 'docs@qlmed.com.br',
+      accessToken: 'enc-access',
+      refreshToken: 'enc-refresh',
+      driveId: 'drive-1',
+      tokenExpiresAt: new Date(Date.now() + 3600 * 1000),
+      scope: 'Files.ReadWrite',
+    });
+    mocks.decrypt.mockImplementation((value: string) => {
+      if (value === 'enc-access') return 'stale-access';
+      if (value === 'enc-refresh') return 'refresh-token';
+      return value;
+    });
+    mocks.encrypt.mockImplementation((value: string) => `enc-${value}`);
+    mocks.refreshOneDriveAccessToken.mockResolvedValue({
+      access_token: 'fresh-access',
+      expires_in: 3600,
+      refresh_token: 'refresh-token',
+    });
+    mocks.update.mockResolvedValue({});
+
+    const expired = {
+      error: {
+        code: 'InvalidAuthenticationToken',
+        message: 'Lifetime validation failed, the token is expired.',
+      },
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(expired), { status: 401 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'item-1' }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { resolveAccountOneDrive } = await import('@/lib/onedrive-connections');
+    const { oneDriveGraphJsonRequest } = await import('@/lib/onedrive-graph');
+    const { accessToken } = await resolveAccountOneDrive('comp-1', 'docs@qlmed.com.br');
+    await expect(oneDriveGraphJsonRequest<{ id: string }>(accessToken, '/me')).resolves.toEqual({
+      id: 'item-1',
+    });
+    expect(mocks.refreshOneDriveAccessToken).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
