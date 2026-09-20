@@ -133,6 +133,7 @@ export default function DocumentosPageClient() {
       const payload: unknown = await res.json().catch(() => null);
       if (!res.ok) {
         toast.error(apiErrorMessage(payload, 'Não foi possível atualizar agora'));
+        await load({ quiet: true });
         return;
       }
       const result = payload as { scanned?: number; upserted?: number; removed?: number };

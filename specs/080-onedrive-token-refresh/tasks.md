@@ -23,3 +23,4 @@
 
 - [x] T009 `docs:validate`, `tsc --noEmit`, testes do recorte
 - [x] T010 Chamadas seguintes ao Graph reusam o token renovado (P1 Codex)
+- [x] T011 Listagem Documentos omite dump Graph 401 persistido; sync falhou recarrega GET
