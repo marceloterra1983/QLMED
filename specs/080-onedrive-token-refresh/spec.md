@@ -123,6 +123,10 @@ classificadas: ou já renovam, ou não são OAuth JWT.
   Bearer.
 - **FR-080-06**: Sem refresh token OneDrive, a falha MUST continuar a
   pedir reconexão da conta.
+- **FR-080-07**: A listagem de Documentos MUST NÃO ecoar dump JSON do
+  Graph (`InvalidAuthenticationToken` / Lifetime validation failed) em
+  `ingest.lastError`. Esse dump é leftover de varredura anterior ao retry;
+  a página só mostra falha atual (ex.: pedido de reconectar).
 
 ## Failure cases
 
@@ -159,6 +163,9 @@ classificadas: ou já renovam, ou não são OAuth JWT.
 - **SC-080-03**: Teste prova 401 sem renovação possível falha uma vez,
   sem loop.
 - **SC-080-04**: `docs:validate`, typecheck e testes do recorte passam.
+- **SC-080-05**: Teste prova que lastError persistido com JSON
+  `InvalidAuthenticationToken` some da listagem; mensagem de reconectar
+  continua visível.
 
 ## Test strategy
 

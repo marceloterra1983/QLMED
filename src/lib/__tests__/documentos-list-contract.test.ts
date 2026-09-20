@@ -520,4 +520,36 @@ describe('erro de varredura só aparece se for mais recente que o último sucess
     );
     expect(listing.ingest.lastError).toBe('falha antiga sem data');
   });
+
+  it('Graph 401 persistido (dump JSON) não aparece na listagem', () => {
+    const listing = buildDocumentosListing(
+      [],
+      {
+        lastSuccessAt: new Date('2026-09-11T21:25:00.000Z'),
+        lastError:
+          'Falha na API do OneDrive: {"error":{"code":"InvalidAuthenticationToken","message":"Lifetime validation failed, the token is expired."}}',
+        lastErrorAt: new Date('2026-09-20T01:37:02.000Z'),
+      },
+      NOW,
+    );
+    expect(listing.ingest.lastError).toBeNull();
+    expect(listing.ingest.lastErrorAt).toBeNull();
+  });
+
+  it('mensagem de reconectar continua visível', () => {
+    const quando = new Date('2026-09-20T02:30:00.000Z');
+    const listing = buildDocumentosListing(
+      [],
+      {
+        lastSuccessAt: SUCESSO,
+        lastError: 'Token do OneDrive expirado. Reconecte a conta em Sistema → Configurações.',
+        lastErrorAt: quando,
+      },
+      NOW,
+    );
+    expect(listing.ingest.lastError).toBe(
+      'Token do OneDrive expirado. Reconecte a conta em Sistema → Configurações.',
+    );
+    expect(listing.ingest.lastErrorAt).toBe(quando.toISOString());
+  });
 });
