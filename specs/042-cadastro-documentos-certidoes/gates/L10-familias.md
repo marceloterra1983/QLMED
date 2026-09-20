@@ -17,8 +17,8 @@ Scope: generalizar o motor de documentos sobre `DOCUMENTOS_FAMILIES`. Três card
   EXPECT: OK_G3
   EVIDENCE: OK_G3
 
-- [x] G4: limiares sanitária 90/60 distintos da certidão
-  CHECK: npx vitest run src/lib/__tests__/documentos-alert-tick.test.ts -t "sanitária alerta no limiar 90" > /dev/null 2>&1 && echo OK_G4
+- [x] G4: limiares sanitária 90/60 distintos da certidão (thresholdDue); tick diário não envia WhatsApp
+  CHECK: npx vitest run src/lib/__tests__/documentos-validity.test.ts -t "thresholdDue" src/lib/__tests__/documentos-alert-tick.test.ts -t "sanitária" > /dev/null 2>&1 && echo OK_G4
   EXPECT: OK_G4
   EVIDENCE: OK_G4
 

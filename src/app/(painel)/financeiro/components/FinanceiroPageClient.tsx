@@ -9,6 +9,7 @@ import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
 import { formatCurrency, formatAmount, formatDate, getDateGroupLabel, FILTER_INPUT_CLS } from '@/lib/utils';
 import { defaultWalkCollapsedKeys } from '@/lib/list-collapse';
+import { FINANCEIRO_LIST_PAGE_SIZE } from '@/lib/list-pagination';
 import { useRole } from '@/hooks/useRole';
 import { addMoney, roundMoney, sumMoney } from '@/lib/money';
 import {
@@ -104,7 +105,8 @@ export default function FinanceiroPageClient({ direction }: { direction: Finance
 
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [limit] = useState(50);
+  const [pages, setPages] = useState(1);
+  const [limit] = useState(FINANCEIRO_LIST_PAGE_SIZE);
   const [sortBy, setSortBy] = useState('vencimento');
   const [sortOrder, setSortOrder] = useState('asc');
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
@@ -146,7 +148,7 @@ export default function FinanceiroPageClient({ direction }: { direction: Finance
     try {
       const params = new URLSearchParams({
         page: String(page),
-        limit: '2000',
+        limit: String(limit),
         sort: sortBy,
         order: sortOrder,
       });
@@ -161,6 +163,7 @@ export default function FinanceiroPageClient({ direction }: { direction: Finance
       setSummary(data.summary);
       setCoverageRemaining(Number(data.coverage?.remaining) || 0);
       setTotal(data.pagination.total);
+      setPages(Math.max(1, Number(data.pagination.pages) || 1));
       if (!collapsedInitialized && loaded.length > 0) {
         const groupOrder: string[] = [];
         for (const d of loaded) {
@@ -468,6 +471,9 @@ export default function FinanceiroPageClient({ direction }: { direction: Finance
         duplicatas={duplicatas}
         loading={loading}
         total={total}
+        page={page}
+        pages={pages}
+        onPageChange={setPage}
         search={search}
         statusFilter={statusFilter}
         sortBy={sortBy}

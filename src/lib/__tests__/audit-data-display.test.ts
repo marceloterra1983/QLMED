@@ -14,7 +14,7 @@ describe('SPEC-030 list display contracts', () => {
     expect(src).not.toMatch(/type=NFSE&dateFrom=/);
   });
 
-  it('listas fiscais pedem limit 5000, o teto da API (FR-002)', () => {
+  it('listas fiscais pedem page size 50–100, não o teto 5000 (SPEC-077 / FR-002)', () => {
     const files = [
       'src/app/(painel)/fiscal/invoices/page-client.tsx',
       'src/app/(painel)/fiscal/issued/page-client.tsx',
@@ -23,8 +23,9 @@ describe('SPEC-030 list display contracts', () => {
     ];
     for (const file of files) {
       const src = read(file);
+      expect(src, file).not.toMatch(/limit:\s*'5000'/);
       expect(src, file).not.toMatch(/limit:\s*'2000'/);
-      expect(src, file).toMatch(/limit:\s*'5000'/);
+      expect(src, file).toMatch(/FISCAL_LIST_PAGE_SIZE/);
     }
   });
 
@@ -37,6 +38,12 @@ describe('SPEC-030 list display contracts', () => {
   it('contas a receber abrem com todos os status (FR-004)', () => {
     const src = read('src/app/(painel)/financeiro/components/FinanceiroPageClient.tsx');
     expect(src).not.toMatch(/defaultStatusFilter:\s*'upcoming'/);
+  });
+
+  it('financeiro lista com page size 50–100, não 2000 (SPEC-077)', () => {
+    const src = read('src/app/(painel)/financeiro/components/FinanceiroPageClient.tsx');
+    expect(src).not.toMatch(/limit:\s*'2000'/);
+    expect(src).toMatch(/FINANCEIRO_LIST_PAGE_SIZE/);
   });
 
   it('backfill de duplicata não está preso a tabela vazia (FR-005)', () => {

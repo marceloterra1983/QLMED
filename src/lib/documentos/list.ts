@@ -77,6 +77,29 @@ function erroAindaAtual(
   return new Date(ingest.lastErrorAt).getTime() > new Date(ingest.lastSuccessAt).getTime();
 }
 
+/**
+ * Dump cru do Graph (401 / InvalidAuthenticationToken) ficou no
+ * `lastError` de varreduras anteriores ao retry. A página não deve ecoar
+ * JSON de token morto — o JWT já é renovado. Pedido atual de reconectar
+ * (mensagem amigável) continua visível.
+ */
+function isPersistedGraphAuthDump(lastError: string): boolean {
+  return (
+    lastError.includes('InvalidAuthenticationToken') ||
+    /Lifetime validation failed/i.test(lastError) ||
+    /"token is expired"/i.test(lastError)
+  );
+}
+
+function ingestErrorForListing(
+  ingest: { lastSuccessAt: Date | string | null; lastError: string | null; lastErrorAt: Date | string | null } | null,
+): { lastError: string | null; lastErrorAt: string | null } {
+  if (!erroAindaAtual(ingest)) return { lastError: null, lastErrorAt: null };
+  const raw = ingest?.lastError ?? null;
+  if (raw && isPersistedGraphAuthDump(raw)) return { lastError: null, lastErrorAt: null };
+  return { lastError: raw, lastErrorAt: toIso(ingest?.lastErrorAt) };
+}
+
 function toIso(value: Date | string | null | undefined): string | null {
   if (value == null) return null;
   if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString();
@@ -345,8 +368,7 @@ export function buildDocumentosListing(
        * 12:43 falhou" quando a das 12:53 tinha passado. Fez-me quase declarar
        * produção quebrada com produção sã.
        */
-      lastError: erroAindaAtual(ingest) ? (ingest?.lastError ?? null) : null,
-      lastErrorAt: erroAindaAtual(ingest) ? toIso(ingest?.lastErrorAt) : null,
+      ...ingestErrorForListing(ingest),
     },
     shareRecipients: DOCUMENTOS_SHARE_RECIPIENTS.map(({ email, label }) => ({ email, label })),
     whatsappRecipients: DOCUMENTOS_WHATSAPP_RECIPIENTS.map(({ phone, label }) => ({ phone, label })),

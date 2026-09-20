@@ -409,6 +409,50 @@ describe('Cadastro › Documentos (SPEC-042 L9)', () => {
       expect(toast.error).toHaveBeenCalledWith('já em andamento');
     });
   });
+
+  it('sync falhou recarrega a listagem para atualizar lastError', async () => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === '/api/documentos/sync' && init?.method === 'POST') {
+        return jsonResponse({ error: 'Não foi possível atualizar agora' }, { ok: false, status: 500 });
+      }
+      return jsonResponse(listing());
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<DocumentosPageClient />);
+    await certidoesTable();
+    const getsBefore = fetchMock.mock.calls.filter(([url]) => url === '/api/documentos').length;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Atualizar do OneDrive' }));
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Não foi possível atualizar agora');
+    });
+    await waitFor(() => {
+      const gets = fetchMock.mock.calls.filter(([url]) => url === '/api/documentos');
+      expect(gets.length).toBeGreaterThan(getsBefore);
+    });
+  });
+
+  it('sync rejeitado na rede também recarrega a listagem', async () => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === '/api/documentos/sync' && init?.method === 'POST') {
+        throw new TypeError('Failed to fetch');
+      }
+      return jsonResponse(listing());
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<DocumentosPageClient />);
+    await certidoesTable();
+    const getsBefore = fetchMock.mock.calls.filter(([url]) => url === '/api/documentos').length;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Atualizar do OneDrive' }));
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Erro de rede ao atualizar');
+    });
+    await waitFor(() => {
+      const gets = fetchMock.mock.calls.filter(([url]) => url === '/api/documentos');
+      expect(gets.length).toBeGreaterThan(getsBefore);
+    });
+  });
 });
 
 describe('SPEC-042 — a data de validade não pode deslizar de fuso', () => {

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { filterProductRows } from '../product-utils';
+import { DEFAULT_PRODUCT_LINE_STATUS, filterProductRows } from '../product-utils';
 import type { ProductRow } from '../../types';
 
 const row = (partial: Partial<ProductRow>): ProductRow => ({
@@ -66,6 +66,10 @@ describe('filterProductRows', () => {
     ];
     expect(filterProductRows(withStatus, { search: 'alexis', lineStatus: 'active' })).toHaveLength(2);
     expect(filterProductRows(withStatus, { search: 'alexis', lineStatus: 'outOfLine' })).toHaveLength(1);
+  });
+
+  it('default da lista é Em Linha', () => {
+    expect(DEFAULT_PRODUCT_LINE_STATUS).toBe('active');
   });
 });
 

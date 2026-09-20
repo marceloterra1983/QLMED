@@ -6,6 +6,8 @@ import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import Skeleton from '@/components/ui/Skeleton';
 import ListCount from '@/components/ui/ListCount';
+import ListPagination from '@/components/ui/ListPagination';
+import { applyListPageParams, FISCAL_LIST_PAGE_SIZE } from '@/lib/list-pagination';
 import RowActions from '@/components/ui/RowActions';
 import MobileFilterWrapper from '@/components/ui/MobileFilterWrapper';
 import type { Invoice } from '@/types';
@@ -31,6 +33,8 @@ export default function NfseReceivedPage() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
   const [directionFilter, setDirectionFilter] = useState<'all' | 'received' | 'issued'>('received');
   const [sortBy, setSortBy] = useState('emission');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -62,11 +66,13 @@ export default function NfseReceivedPage() {
     else { setDateFrom(`${year}-01-01`); setDateTo(`${year}-12-31`); }
     setSelectedYear(year);
     setCollapsedInitialized(false);
+    setPage(1);
   };
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearch(searchInput.trim());
+      setPage(1);
     }, 300);
     return () => clearTimeout(timer);
   }, [searchInput]);
@@ -74,7 +80,7 @@ export default function NfseReceivedPage() {
   useEffect(() => {
     void loadInvoices();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, directionFilter, sortBy, sortOrder, dateFrom, dateTo]);
+  }, [page, search, directionFilter, sortBy, sortOrder, dateFrom, dateTo]);
 
   useEffect(() => {
     const cy = new Date().getFullYear();
@@ -101,12 +107,11 @@ export default function NfseReceivedPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams({
-        page: '1',
-        limit: '5000',
         type: 'NFSE',
         sort: sortBy,
         order: sortOrder,
       });
+      applyListPageParams(params, page, FISCAL_LIST_PAGE_SIZE);
       if (directionFilter === 'received') {
         params.set('direction', 'received');
       } else if (directionFilter === 'issued') {
@@ -125,7 +130,13 @@ export default function NfseReceivedPage() {
       const data = await res.json();
       const loaded: Invoice[] = data.invoices || [];
       setInvoices(loaded);
-      setTotal(data.pagination?.total || 0);
+      setTotal((prev) => data.pagination?.total ?? prev);
+      setPages((prev) => {
+        const next = data.pagination?.pages;
+        if (typeof next === 'number') return Math.max(next, 1);
+        const known = data.pagination?.total ?? prev;
+        return Math.max(1, Math.ceil(known / FISCAL_LIST_PAGE_SIZE));
+      });
       if (!collapsedInitialized && loaded.length > 0) {
         const groups = Array.from(new Set(loaded.map(inv => getDateGroupLabel(inv.issueDate))));
         setCollapsedGroups(new Set(defaultWalkCollapsedKeys(groups)));
@@ -141,10 +152,12 @@ export default function NfseReceivedPage() {
   function handleSort(field: string) {
     if (sortBy === field) {
       setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+      setPage(1);
       return;
     }
     setSortBy(field);
     setSortOrder('desc');
+    setPage(1);
   }
 
   function openModal(id: string) {
@@ -255,7 +268,14 @@ export default function NfseReceivedPage() {
         actions={(
           <>
             <div className="font-medium whitespace-nowrap">
-              <ListCount shown={invoices.length} total={total} noun="documento(s)" />
+              <ListCount
+                shown={invoices.length}
+                total={total}
+                noun="documento(s)"
+                page={page}
+                pages={pages}
+                pageSize={FISCAL_LIST_PAGE_SIZE}
+              />
             </div>
             <Button
               onClick={() => setHideValues(v => !v)}
@@ -301,7 +321,10 @@ export default function NfseReceivedPage() {
             <select
               aria-label="Tipo de NFS-e"
               value={directionFilter}
-              onChange={(e) => setDirectionFilter(e.target.value as 'all' | 'received' | 'issued')}
+              onChange={(e) => {
+                setDirectionFilter(e.target.value as 'all' | 'received' | 'issued');
+                setPage(1);
+              }}
               className={FILTER_INPUT_CLS}
             >
               <option value="all">Todas as NFS-e</option>
@@ -533,12 +556,22 @@ export default function NfseReceivedPage() {
           </table>
         </div>
 
-        <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/30 dark:bg-slate-800/20">
+        <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2 bg-slate-50/30 dark:bg-slate-800/20">
           <div className="flex items-center gap-1">
             <span className="text-xs text-slate-500 dark:text-slate-400 mr-1.5">Ano:</span>
             {yearNavButtons}
           </div>
-          <ListCount shown={invoices.length} total={total} noun="documento(s)" />
+          <div className="flex items-center gap-3">
+            <ListCount
+              shown={invoices.length}
+              total={total}
+              noun="documento(s)"
+              page={page}
+              pages={pages}
+              pageSize={FISCAL_LIST_PAGE_SIZE}
+            />
+            <ListPagination page={page} pages={pages} loading={loading} onPageChange={setPage} />
+          </div>
         </div>
       </Card>
 

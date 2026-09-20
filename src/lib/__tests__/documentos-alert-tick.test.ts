@@ -1,6 +1,5 @@
 import type { CompanyDocumentKind } from '@prisma/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CERTIDAO_LABEL } from '@/lib/documentos/constants';
 import type { DocumentosFolderPort } from '@/lib/documentos/ingest';
 import type { DocumentosWhatsAppTarget } from '@/lib/documentos/alerts';
 
@@ -231,7 +230,7 @@ describe('SPEC-042 L7 — runDocumentosAlertTick', () => {
     expect(memory.docs[0]?.alertedThresholds).toEqual([30]);
   });
 
-  it('30 dias → 1 envio com PDF, legenda e tipos em falta; 2.º tick do mesmo dia → 0', async () => {
+  it('30 dias → 0 envios (vencimento não dispara WhatsApp); 2.º tick do mesmo dia → 0', async () => {
     const { runDocumentosAlertTick } = await import('@/lib/documentos/alerts');
     seedFederal('2026-10-12');
     const downloads: string[] = [];
@@ -240,26 +239,18 @@ describe('SPEC-042 L7 — runDocumentosAlertTick', () => {
     const deps = { port: fakePort(downloads), target: fakeTarget(sent) };
 
     const first = await runDocumentosAlertTick(COMPANY, deps, now);
-    expect(first.sent).toBe(1);
-    expect(downloads).toEqual(['od-federal']);
-    expect(sent).toHaveLength(1);
-    expect(sent[0]?.jid).toBe(GROUP);
-    expect(sent[0]?.content.equals(PDF)).toBe(true);
-    expect(sent[0]?.fileName).toBe(FEDERAL_FILE);
-    expect(sent[0]?.caption).toContain(CERTIDAO_LABEL.cnd_federal);
-    expect(sent[0]?.caption).toContain(FEDERAL_FILE);
-    expect(sent[0]?.caption).toContain('vence em 30 dias');
-    expect(sent[0]?.caption).toContain(`Sem certidão no OneDrive: ${CERTIDAO_LABEL.crf_fgts}`);
-    expect(sent[0]?.caption).toContain(`Sem certidão no OneDrive: ${CERTIDAO_LABEL.cndt}`);
-    expect(memory.docs[0]?.alertedThresholds).toEqual([30]);
+    expect(first.sent).toBe(0);
+    expect(downloads).toEqual([]);
+    expect(sent).toHaveLength(0);
+    expect(memory.docs[0]?.alertedThresholds).toEqual([]);
     expect(memory.state?.lastAlertDay).toBe('2026-09-12');
 
     const second = await runDocumentosAlertTick(COMPANY, deps, now);
     expect(second.sent).toBe(0);
-    expect(sent).toHaveLength(1);
+    expect(sent).toHaveLength(0);
   });
 
-  it('-7 → 1 envio vencida há 7 dias', async () => {
+  it('-7 → 0 envios; limiar não é consumido', async () => {
     const { runDocumentosAlertTick } = await import('@/lib/documentos/alerts');
     seedFederal('2026-10-12');
     const sent: Array<{ jid: string; fileName: string; content: Buffer; caption: string }> = [];
@@ -270,12 +261,12 @@ describe('SPEC-042 L7 — runDocumentosAlertTick', () => {
       at8sp('2026-10-19'),
     );
 
-    expect(result.sent).toBe(1);
-    expect(sent[0]?.caption).toContain('vencida há 7 dias');
-    expect(memory.docs[0]?.alertedThresholds).toEqual([-7]);
+    expect(result.sent).toBe(0);
+    expect(sent).toHaveLength(0);
+    expect(memory.docs[0]?.alertedThresholds).toEqual([]);
   });
 
-  it('-3 → limiar -7', async () => {
+  it('-3 → 0 envios', async () => {
     const { runDocumentosAlertTick } = await import('@/lib/documentos/alerts');
     seedFederal('2026-10-12');
     const sent: Array<{ jid: string; fileName: string; content: Buffer; caption: string }> = [];
@@ -286,12 +277,12 @@ describe('SPEC-042 L7 — runDocumentosAlertTick', () => {
       at8sp('2026-10-15'),
     );
 
-    expect(result.sent).toBe(1);
-    expect(memory.docs[0]?.alertedThresholds).toEqual([-7]);
-    expect(sent[0]?.caption).toContain('vencida há 3 dias');
+    expect(result.sent).toBe(0);
+    expect(sent).toHaveLength(0);
+    expect(memory.docs[0]?.alertedThresholds).toEqual([]);
   });
 
-  it('falha: Evolution rejeita, limiar já gravado, erro saneado, tick seguinte não reenvia', async () => {
+  it('falha: Evolution no target não é chamada; lastError fica vazio', async () => {
     const { runDocumentosAlertTick } = await import('@/lib/documentos/alerts');
     seedFederal('2026-10-12');
     const sent: Array<{ jid: string; fileName: string; content: Buffer; caption: string }> = [];
@@ -305,24 +296,10 @@ describe('SPEC-042 L7 — runDocumentosAlertTick', () => {
     );
 
     expect(first.sent).toBe(0);
-    expect(sent).toHaveLength(1);
-    expect(memory.docs[0]?.alertedThresholds).toEqual([30]);
-    expect(memory.state?.lastError).toBeTruthy();
-    expect(memory.state?.lastError).toMatch(/Bearer \[redacted\]/);
-    expect(memory.state?.lastError).not.toMatch(/eyJaaaaaaaaaaa/);
+    expect(sent).toHaveLength(0);
+    expect(memory.docs[0]?.alertedThresholds).toEqual([]);
+    expect(memory.state?.lastError).toBeFalsy();
     expect(memory.state?.lastAlertDay).toBe('2026-09-12');
-
-    memory.state!.lastAlertDay = null;
-
-    const second = await runDocumentosAlertTick(
-      COMPANY,
-      { port: fakePort(), target: fakeTarget(sent) },
-      now,
-    );
-
-    expect(second.sent).toBe(0);
-    expect(sent).toHaveLength(1);
-    expect(memory.docs[0]?.alertedThresholds).toEqual([30]);
   });
 
   it('lock ocupado → 0 envios, sem erro', async () => {
@@ -344,7 +321,7 @@ describe('SPEC-042 L7 — runDocumentosAlertTick', () => {
     expect(memory.docs[0]?.alertedThresholds).toEqual([]);
   });
 
-  it('dois ticks concorrentes: lock só concede uma vez → 1 envio', async () => {
+  it('dois ticks concorrentes: lock só concede uma vez → 0 envios', async () => {
     const { runDocumentosAlertTick } = await import('@/lib/documentos/alerts');
     seedFederal('2026-10-12');
     let granted = 0;
@@ -362,39 +339,25 @@ describe('SPEC-042 L7 — runDocumentosAlertTick', () => {
       runDocumentosAlertTick(COMPANY, deps, now),
     ]);
 
-    expect(a.sent + b.sent).toBe(1);
-    expect(sent).toHaveLength(1);
+    expect(a.sent + b.sent).toBe(0);
+    expect(sent).toHaveLength(0);
     expect(lock.acquire).toHaveBeenCalledWith('documentos-alert:co1');
   });
 
-  it('tipo sem certidão só sai da fila depois de um envio com sucesso', async () => {
+  it('tipo sem certidão não gera envio no tick de vencimento', async () => {
     const { runDocumentosAlertTick } = await import('@/lib/documentos/alerts');
     seedFederal('2026-10-12');
     seedKind('crf_fgts', '2026-10-12');
     const sent: Array<{ jid: string; fileName: string; content: Buffer; caption: string }> = [];
-    let calls = 0;
-    const target: DocumentosWhatsAppTarget = {
-      jid: GROUP,
-      port: {
-        async sendDocument(input) {
-          sent.push(input);
-          calls += 1;
-          if (calls === 1) throw new Error('primeiro envio falhou');
-          return { messageId: 'wamid-2' };
-        },
-      },
-    };
 
     const result = await runDocumentosAlertTick(
       COMPANY,
-      { port: fakePort(), target },
+      { port: fakePort(), target: fakeTarget(sent) },
       at8sp('2026-09-12'),
     );
 
-    expect(result.sent).toBe(1);
-    expect(sent).toHaveLength(2);
-    expect(sent[0]?.caption).toContain(`Sem certidão no OneDrive: ${CERTIDAO_LABEL.cndt}`);
-    expect(sent[1]?.caption).toContain(`Sem certidão no OneDrive: ${CERTIDAO_LABEL.cndt}`);
+    expect(result.sent).toBe(0);
+    expect(sent).toHaveLength(0);
   });
 
   it('canal desligado não chama getEvolutionConfig', async () => {
@@ -420,7 +383,7 @@ describe('SPEC-042 L7 — runDocumentosAlertTick', () => {
     expect(memory.docs[0]?.alertedThresholds).toEqual([]);
   });
 
-  it('sanitária alerta no limiar 90 e 60', async () => {
+  it('sanitária no limiar 90/60 não envia WhatsApp', async () => {
     const { runDocumentosAlertTick } = await import('@/lib/documentos/alerts');
     seedKind('licenca_sanitaria', '2026-12-11');
     const sent: Array<{ jid: string; fileName: string; content: Buffer; caption: string }> = [];
@@ -430,9 +393,9 @@ describe('SPEC-042 L7 — runDocumentosAlertTick', () => {
       { port: fakePort(), target: fakeTarget(sent) },
       at8sp('2026-09-12'),
     );
-    expect(at90.sent).toBe(1);
-    expect(memory.docs[0]?.alertedThresholds).toEqual([90]);
-    expect(sent[0]?.caption).toContain('vence em 90 dias');
+    expect(at90.sent).toBe(0);
+    expect(memory.docs[0]?.alertedThresholds).toEqual([]);
+    expect(sent).toHaveLength(0);
 
     memory.state!.lastAlertDay = null;
     const at60 = await runDocumentosAlertTick(
@@ -440,8 +403,8 @@ describe('SPEC-042 L7 — runDocumentosAlertTick', () => {
       { port: fakePort(), target: fakeTarget(sent) },
       at8sp('2026-10-12'),
     );
-    expect(at60.sent).toBe(1);
-    expect(memory.docs[0]?.alertedThresholds).toEqual([90, 60]);
+    expect(at60.sent).toBe(0);
+    expect(memory.docs[0]?.alertedThresholds).toEqual([]);
   });
 
   it('carta sem data não alerta', async () => {
@@ -468,6 +431,33 @@ describe('SPEC-042 L7 — runDocumentosAlertTick', () => {
     expect(result.sent).toBe(0);
     expect(sent).toHaveLength(0);
     expect(memory.docs[0]?.alertedThresholds).toEqual([]);
+  });
+
+  it('carta vencida há anos não dispara PDF no grupo', async () => {
+    const { runDocumentosAlertTick } = await import('@/lib/documentos/alerts');
+    memory.docs.push({
+      id: 'doc-carta-velha',
+      companyId: COMPANY,
+      kind: 'carta_comercializacao',
+      fileName: 'Carta Comercialização TECHIMPORT.pdf',
+      oneDriveItemId: 'od-carta-velha',
+      validUntil: new Date('1925-10-01T00:00:00.000Z'),
+      removedAt: null,
+      alertedThresholds: [],
+      renewalNotifiedAt: null,
+    });
+    const sent: Array<{ jid: string; fileName: string; content: Buffer; caption: string }> = [];
+    const downloads: string[] = [];
+
+    const result = await runDocumentosAlertTick(
+      COMPANY,
+      { port: fakePort(downloads), target: fakeTarget(sent) },
+      at8sp('2026-09-14'),
+    );
+
+    expect(result.sent).toBe(0);
+    expect(sent).toHaveLength(0);
+    expect(downloads).toHaveLength(0);
   });
 });
 

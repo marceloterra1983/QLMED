@@ -4,7 +4,7 @@ sumario: Sistema de gestão fiscal e notas fiscais (NF-e, CT-e, NFS-e) da empres
 versao: 1.17
 atualizado: 2026-09-01
 status: producao
-maquina: server
+maquina: vps2
 dependencias: [infra/networking]
 arquivos_config:
   - /srv/qlmed/docker-compose.yml

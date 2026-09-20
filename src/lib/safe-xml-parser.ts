@@ -121,28 +121,35 @@ function assertSafeXml(xmlContent: string): void {
   rejectDeepNesting(xmlContent);
 }
 
-/** Shared safe parser with size limit validation */
-const safeXmlParser = new xml2js.Parser({
-  explicitArray: false,
-  mergeAttrs: true,
-  trim: true,
-  tagNameProcessors: [xml2js.processors.stripPrefix],
-});
+/**
+ * xml2js Parser guarda estado sax na instância: dois parseStringPromise
+ * simultâneos no mesmo objeto se corrompem (produção: `result.nfeProc` nulo
+ * com CPU no teto). Cada chamada leva o seu parser.
+ */
+function createSafeParser(mergeAttrs: boolean): xml2js.Parser {
+  return new xml2js.Parser(
+    mergeAttrs
+      ? {
+          explicitArray: false,
+          mergeAttrs: true,
+          trim: true,
+          tagNameProcessors: [xml2js.processors.stripPrefix],
+        }
+      : {
+          explicitArray: false,
+          ignoreAttrs: false,
+          tagNameProcessors: [xml2js.processors.stripPrefix],
+        },
+  );
+}
 
 /** Parse XML with size, DOCTYPE and depth checks */
 export async function parseXmlSafe(xmlContent: string) {
   assertSafeXml(xmlContent);
-  return safeXmlParser.parseStringPromise(xmlContent);
+  return createSafeParser(true).parseStringPromise(xmlContent);
 }
-
-/** Parser variant without mergeAttrs (for NF-e extraction) */
-const safeXmlParserNoMerge = new xml2js.Parser({
-  explicitArray: false,
-  ignoreAttrs: false,
-  tagNameProcessors: [xml2js.processors.stripPrefix],
-});
 
 export async function parseXmlSafeNoMerge(xmlContent: string) {
   assertSafeXml(xmlContent);
-  return safeXmlParserNoMerge.parseStringPromise(xmlContent);
+  return createSafeParser(false).parseStringPromise(xmlContent);
 }

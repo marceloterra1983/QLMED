@@ -1,0 +1,14 @@
+---
+description: Excalidraw canvas no QLMED usa :3456. Nunca 3000/3001/3002. Dispara em diagramas, .excalidraw e mcp-excalidraw-server.
+alwaysApply: true
+---
+
+# Excalidraw (QLMED)
+
+Canvas local: `http://127.0.0.1:3456` (`HOST=127.0.0.1`, `PORT=3456`, `EXPRESS_SERVER_URL=http://127.0.0.1:3456`).
+
+Pacote: `mcp-excalidraw-server@2.0.0`. Skills: `excalidraw-qlmed` (porta) depois `excalidraw-skill` (desenho).
+
+Nunca ligue o canvas em `:3000` (Next), `:3001` (Kuma), `:3002` (preview) nem `:3003`/`:3004`. Não use `HOST=0.0.0.0`.
+
+CLI sempre com o `export` de porta acima. Artefatos: `docs/architecture/*.excalidraw`.

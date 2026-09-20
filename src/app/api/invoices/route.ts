@@ -5,7 +5,6 @@ import prisma from '@/lib/prisma';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { markCompanyForSyncRecovery } from '@/lib/sync-recovery';
 import { getCfopCodesByTag, getCfopTagByCode } from '@/lib/cfop';
-import { ensureLocalXmlSyncNow } from '@/lib/local-xml-sync';
 import { apiError } from '@/lib/api-error';
 import { cacheHeaders } from '@/lib/cache-headers';
 import { createLogger } from '@/lib/logger';
@@ -25,6 +24,7 @@ import {
   extractCteRemetenteCnpj,
   extractCteRemetenteName,
 } from '@/lib/cte-party-extractors';
+import { parseIncludeTotal, resolveListTotal } from '@/lib/list-pagination';
 
 const log = createLogger('invoices');
 
@@ -154,12 +154,10 @@ export async function GET(req: Request) {
     const { page, limit, search, type, status, direction, order, cfopTag } = params;
     const sort = params.sort || 'emission';
     const { dateFrom, dateTo } = params;
+    const includeTotal = parseIncludeTotal(searchParams.get('includeTotal'));
 
-    if (direction === 'issued' && (type === '' || type === 'NFE')) {
-      void ensureLocalXmlSyncNow().catch((syncError) => {
-        log.error({ err: syncError }, '[Invoices] Falha ao forçar sync local de XML');
-      });
-    }
+    // Sync OneDrive/local-xml roda só pelo scheduler de background.
+    // Disparar no GET issued empilhava cópia/CPU na navegação do usuário.
 
     const where: Record<string, unknown> = { companyId: company.id };
 
@@ -297,16 +295,19 @@ export async function GET(req: Request) {
         take: limit,
       });
 
-      const total =
-        page === 1 && searchInvoices.length < limit
-          ? searchInvoices.length
-          : await prisma.invoice.count({ where: searchWhere });
+      const { total, pages } = await resolveListTotal({
+        page,
+        limit,
+        fetchedCount: searchInvoices.length,
+        includeTotal,
+        count: () => prisma.invoice.count({ where: searchWhere }),
+      });
 
       const invoicesWithExtra = await attachExtraFieldsForInvoices(searchInvoices);
 
       return NextResponse.json({
         invoices: invoicesWithExtra,
-        pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+        pagination: { page, limit, total, pages },
       }, { headers: cacheHeaders('list') });
     }
 
@@ -332,10 +333,13 @@ export async function GET(req: Request) {
       take: limit,
     });
 
-    const total =
-      page === 1 && invoices.length < limit
-        ? invoices.length
-        : await prisma.invoice.count({ where });
+    const { total, pages } = await resolveListTotal({
+      page,
+      limit,
+      fetchedCount: invoices.length,
+      includeTotal,
+      count: () => prisma.invoice.count({ where }),
+    });
 
     const invoicesWithExtra = await attachExtraFieldsForInvoices(invoices);
 
@@ -345,7 +349,7 @@ export async function GET(req: Request) {
         page,
         limit,
         total,
-        pages: Math.ceil(total / limit),
+        pages,
       },
     }, { headers: cacheHeaders('list') });
   } catch (error) {

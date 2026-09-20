@@ -21,21 +21,12 @@ import { cartaLabelFromFileName } from './classify';
 import {
   documentosAlertHourLocal,
   DOCUMENTOS_ALERT_TICK_MS,
-  DOCUMENTOS_FAMILIES,
   familyForKind,
   getDocumentosWhatsAppGroupRaw,
   isDocumentosWhatsAppEnabled,
-  kindExpires,
   labelForKind,
 } from './constants';
-import type { DocumentosFamily } from './families';
-import {
-  daysRemaining,
-  selectVigente,
-  thresholdDue,
-  todayInSaoPaulo,
-  toYmd,
-} from './validity';
+import { todayInSaoPaulo } from './validity';
 import { createDocumentosFolderPort } from './onedrive-port';
 import {
   DOCUMENTOS_RENEWAL_EMAIL_RECIPIENTS,
@@ -155,11 +146,6 @@ function captionLabel(row: { kind: CompanyDocumentKind; fileName: string }): str
   return labelForKind(row.kind);
 }
 
-function missingPhrase(family: DocumentosFamily, label: string): string {
-  if (family.category === 'certidao') return `Sem certidão no OneDrive: ${label}`;
-  return `Sem documento no OneDrive: ${label}`;
-}
-
 function hourInSaoPaulo(now: Date): number {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: SAO_PAULO,
@@ -184,20 +170,6 @@ async function markLastAlertDay(db: AlertPrisma, companyId: string, today: strin
     where: { companyId },
     create: { companyId, lastAlertDay: today },
     update: { lastAlertDay: today },
-  });
-}
-
-async function saveAlertError(
-  db: AlertPrisma,
-  companyId: string,
-  now: Date,
-  error: unknown,
-): Promise<void> {
-  const lastError = sanitizeError(error instanceof Error ? error.message : 'alerta falhou');
-  await db.companyDocumentIngestState.upsert({
-    where: { companyId },
-    create: { companyId, lastError, lastErrorAt: now },
-    update: { lastError, lastErrorAt: now },
   });
 }
 
@@ -232,127 +204,13 @@ async function runDocumentosAlertTickLocked(
 
   if (hourInSaoPaulo(now) !== documentosAlertHourLocal()) return { sent: 0, markedDay: false };
 
-  const target = resolveTarget(deps);
-  if (!target) return { sent: 0, markedDay: false };
-
-  const rows = await db.companyDocument.findMany({
-    where: { companyId, removedAt: null },
-    select: {
-      id: true,
-      kind: true,
-      category: true,
-      fileName: true,
-      oneDriveItemId: true,
-      validUntil: true,
-      removedAt: true,
-      alertedThresholds: true,
-    },
-  });
-
-  const vigente = selectVigente(rows);
-  const missingKindLabels: string[] = [];
-  const due: { row: AlertDoc; days: number; threshold: number }[] = [];
-
-  for (const family of DOCUMENTOS_FAMILIES) {
-    if (family.mode === 'closed') {
-      for (const kindDef of family.kinds) {
-        const row = vigente.get(kindDef.kind);
-        if (!row) {
-          if (family.category === 'certidao') {
-            missingKindLabels.push(missingPhrase(family, kindDef.label));
-          }
-          continue;
-        }
-        if (!kindDef.expira) continue;
-        const ymd = toYmd(row.validUntil);
-        if (!ymd) continue;
-        const days = daysRemaining(today, ymd);
-        const threshold = thresholdDue(days, row.alertedThresholds ?? [], family.thresholds);
-        if (threshold != null) due.push({ row, days, threshold });
-      }
-      continue;
-    }
-
-    const ofFamily = rows.filter((row) => family.kinds.some((kind) => kind.kind === row.kind));
-    for (const row of ofFamily) {
-      if (!kindExpires(row.kind)) continue;
-      const ymd = toYmd(row.validUntil);
-      if (!ymd) continue;
-      const days = daysRemaining(today, ymd);
-      const threshold = thresholdDue(days, row.alertedThresholds ?? [], family.thresholds);
-      if (threshold != null) due.push({ row, days, threshold });
-    }
-  }
-
-  // Grave lastAlertDay ANTES de enviar. O dia é a mesma classe de estado que
-  // o limiar (JOB-005): dois ticks sobrepostos não podem ambos passar. O
-  // advisory lock serializa a corrida; esta escrita fecha a janela se o lock
-  // falhar. Um envio falhado com o dia já marcado perde o ciclo (fica no log),
-  // em vez de duplicar.
+  // FR-010: vencimento no calendário NÃO dispara WhatsApp. O grupo só recebe
+  // PDF quando um documento novo é lançado (notifyRenewals / FR-011). O tick
+  // marca o dia para o lock de slot continuar estável; não baixa OneDrive e
+  // não chama Evolution.
   await markLastAlertDay(db, companyId, today);
-
-  const port = deps?.port ?? (await createDocumentosFolderPort(companyId));
-  let sent = 0;
-  let captionExtras = missingKindLabels;
-
-  for (const item of due) {
-    let content: Buffer;
-    try {
-      content = await port.downloadPdf(item.row.oneDriveItemId);
-    } catch (error) {
-      log.warn(
-        {
-          documentId: item.row.id,
-          kind: item.row.kind,
-          err: sanitizeError(error instanceof Error ? error.message : 'download'),
-        },
-        'documentos_alert_download_failed',
-      );
-      await saveAlertError(db, companyId, now, error);
-      continue;
-    }
-
-    // JOB-005 / outbox fiscal: grave o limiar em alertedThresholds ANTES de
-    // chamar a Evolution. Um reinício entre o envio e a escrita duplicaria o
-    // aviso; um envio falhado com o limiar já consumido só perde UM aviso e
-    // fica no log.
-    const nextThresholds = [...(item.row.alertedThresholds ?? []), item.threshold];
-    await db.companyDocument.update({
-      where: { id: item.row.id },
-      data: { alertedThresholds: nextThresholds },
-    });
-    item.row.alertedThresholds = nextThresholds;
-
-    const caption = buildExpiryCaption(item.row, item.days, captionExtras);
-
-    try {
-      await target.port.sendDocument({
-        jid: target.jid,
-        fileName: item.row.fileName,
-        content,
-        caption,
-      });
-      sent += 1;
-      captionExtras = [];
-      log.info(
-        { documentId: item.row.id, kind: item.row.kind, threshold: item.threshold },
-        'documentos_alert_sent',
-      );
-    } catch (error) {
-      log.warn(
-        {
-          documentId: item.row.id,
-          kind: item.row.kind,
-          threshold: item.threshold,
-          err: sanitizeError(error instanceof Error ? error.message : 'envio'),
-        },
-        'documentos_alert_failed',
-      );
-      await saveAlertError(db, companyId, now, error);
-    }
-  }
-
-  return { sent, markedDay: true };
+  log.info('documentos_alert_tick_skipped_expiry');
+  return { sent: 0, markedDay: true };
 }
 
 /**

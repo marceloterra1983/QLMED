@@ -294,7 +294,7 @@ describe('deploy-production.yml — writer is vps2, runner stays on server', () 
     expect(yml).toContain('scripts/qlmed-deploy-vps2.sh');
     expect(yml).toContain('load-image');
     expect(remote).toMatch(/docker save/);
-    expect(remote).toMatch(/up -d --no-build qlmed-app/);
+    expect(remote).toMatch(/up -d --no-build --force-recreate qlmed-app/);
     expect(remote).toMatch(/127\.0\.0\.1:13000/);
     expect(remote).toMatch(/\bssh\b/);
   });
@@ -303,6 +303,18 @@ describe('deploy-production.yml — writer is vps2, runner stays on server', () 
     expect(yml).not.toMatch(/up -d --no-build(?: --force-recreate)? qlmed-app/);
     expect(yml).not.toMatch(/curl[^\n]*127\.0\.0\.1:13000/);
     expect(yml).toMatch(/running on the runner host/);
+  });
+
+  it('aceita DEPLOY com espaços laterais no confirm_production', () => {
+    expect(yml).toMatch(/confirm_production/);
+    expect(yml).toMatch(/sed 's\/\^\[\[:space:\]\]\*\/\/;s\/\[\[:space:\]\]\*\$\/\/'/);
+    expect(yml).toMatch(/confirm_production must be exactly DEPLOY/);
+  });
+
+  it('protege compose run de engolir o stdin do bash -s (release)', () => {
+    expect(remote).toMatch(/run --rm --no-deps -T qlmed-app/);
+    expect(remote).toMatch(/<\/dev\/null/);
+    expect(remote).toMatch(/qlmed-deploy-vps2: migrations ok/);
   });
 
   it('reprova o workflow antigo que fazia up local (controlo positivo)', () => {

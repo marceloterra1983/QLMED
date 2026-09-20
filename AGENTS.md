@@ -43,15 +43,14 @@ npm run db:reconcile:verify
 ## Safety boundaries
 
 - Never read, print, add or commit `.env` files or backups.
-- QLMED has one persistent canonical PostgreSQL database (`postgres`) configured
-  only through `DATABASE_URL`; do not create or expect a `qlmed_dev` database,
-  arbitrary database name or parallel database URL aliases. CI may use its
-  disposable `qlmed_ci` service. Local development against the canonical
-  database is allowed only with protected credentials, background services
-  disabled, and a current backup receipt.
+- Production has one persistent canonical PostgreSQL (`postgres`) on **vps2**
+  through `DATABASE_URL`. On Omarchy, Next (`:3000` / preview `:3002`) reaches
+  that writer via SSH tunnel `127.0.0.1:5435` ([ADR-0020](docs/decisions/0020-omarchy-next-canonical-writer-tunnel.md)).
+  CI and `db:migrate:verify` use disposable `qlmed_ci` on `127.0.0.1:5433`.
+  Do not create `qlmed_dev` or parallel URL aliases. `migrate deploy` on the
+  writer is ROLE-001 (production workflow only).
 - `ops/scripts/qlmed-dev-reseed.sh` still exists on disk and targets
-  `qlmed_dev`, which no longer exists — do not run it without reviewing
-  first.
+  `qlmed_dev`, which no longer exists — do not run it.
 - Do not run deploy, publish, migration deploy or production scripts unless the
   user explicitly requests that external effect.
 - Schema changes use versioned Prisma migrations. Runtime DDL is legacy and
@@ -108,59 +107,39 @@ Complements the rules above.
 - **Ask first:** `db:migrate:deploy`, publish, production scripts, new dependency.
 - **Never:** delete or weaken a failing test; mock company isolation / auth / money to go green; import a package not in the lockfile (`npm ls <pkg>` first).
 
-## Infraestrutura e ambiente (host atual, plano de migração para VPS própria)
+## Infraestrutura e ambiente
 
-Movido de `ops/CLAUDE.md` em 27/08/2026 — o repositório `ops` é o control plane do
-host compartilhado e não deve carregar conhecimento de aplicação QLMED. O dono
-pretende migrar o produto QLMED inteiro (dev + produção) para uma VPS própria no
-futuro; até lá, este é o ambiente real.
+Host de desenvolvimento: Omarchy `dev`, checkout `~/qlmed/app`.
+Writer de produção: **vps2**. O host `server` não tem papel QLMED (será destruído).
+n8n não existe mais. Ver [ADR-0020](docs/decisions/0020-omarchy-next-canonical-writer-tunnel.md).
 
 ### Diretórios
 
-- `/home/marce/qlmed/app/` — checkout canônico com Git (alias `app-dev` → mesmo tree)
-  - Env no host: `app/.env` muitas vezes não existe (`.env.enc`). Herdar
-    `/srv/qlmed/env/app.env` sem imprimir. Se `qlmed-db` não resolver,
-    `DATABASE_URL` com host `127.0.0.1:5432` (`qlmed-db` publica essa porta)
-  - `npm run dev` usa a porta **3000** e mata o que estiver nela; a porta 3001
-    está reservada pelo Uptime Kuma — não suba o compose de dev nela sem
-    resolver o conflito. Preview canônico = worktree
-    `/home/marce/qlmed/.worktrees/preview` na **única porta 3002**
-    (unit `qlmed-dev-preview`, URL `http://100.83.11.58:3002`).
-    Proibido subir QLMED em 3003/3004. Feature com UI: rebase/checkout
-    nessa worktree — não suba outro Next. Validar no preview **antes**
-    de merge/deploy.
-  - `ops/` — scripts, unidades systemd, compose e evidence operacionais
-    (watchdogs, backups, sync CT-e, resumo diário, speckit-updater). Migrado
-    de `ops/qlmed/` em 27/08/2026; os symlinks vivos em
-    `/etc/systemd/system/` apontam pra cá. Atalho de conveniência:
-    `/home/marce/qlmed/ops` → `/home/marce/qlmed/app/ops`.
-- `/srv/qlmed/` — raiz de deploy de produção (`/home/marce/qlmed/production` é
-  symlink de compatibilidade)
-  - `app/` — código-fonte deployado por GitHub Actions, **não é um repo Git**
-  - `docker-compose.yml` — orquestra `qlmed-app`, `qlmed-db`, `qlmed-n8n`, `qlmed-n8n-db`
-  - `.env` — segredos de stack (`POSTGRES_PASSWORD`, `QLMED_API_KEY`, `EVOLUTION_*`)
-  - `env/app.env` / `env/n8n.env` — env por serviço
-- `/home/marce/qlmed/actions-runner-qlmed-prod/` — runner self-hosted (`qlmed-prod`)
-  - `_work/QLMED/QLMED/` — checkout do runner (`deploy-production.yml`)
+- `/home/marce/qlmed/app/` — checkout canônico com Git
+  - `DATABASE_URL` do Next neste `dev` = túnel `127.0.0.1:5435` → vps2
+    `postgres` (ADR-0020). Replay/CI = `qlmed_ci` em `127.0.0.1:5433`.
+    Dump isolado `:5434` não alimenta o preview.
+  - `npm run dev` na porta **3000**. Preview: `~/qlmed/.worktrees/preview` **:3002**.
+  - `ops/` versionado no checkout.
+- `/home/marce/qlmed/production/` — staging do builder `qlmed-prod` neste `dev`
+- `/srv/qlmed/` **na vps2** — runtime (`app/` sem Git, compose, env, volumes)
+- `/srv/qlmed/actions-runner-qlmed-prod/` neste `dev` — listener do deploy
 
 ### Integrações externas
 
 Sefaz (NF-e), NSDocs, Receita Federal (NFS-e), ANVISA, OneDrive (sync de XML),
-Evolution API (WhatsApp), n8n (automação de workflow).
+Evolution API (WhatsApp). n8n aposentado.
 
 ### Comandos comuns
 
 ```bash
-# Stack Docker (rodar de /srv/qlmed/)
-docker compose --project-name qlmed --env-file .env up -d --build
-docker compose --project-name qlmed --env-file .env up -d --build qlmed-app
-docker compose --project-name qlmed logs -f qlmed-app
-curl http://127.0.0.1:13000/api/health
+# Produção: somente na vps2, via workflow_dispatch — não compose up neste host
+curl http://127.0.0.1:13000/api/health   # na vps2
 ```
 
 Scripts de app (`dev`, `build`, `lint`, `db:*`) estão em `package.json`.
-`npm run dev` sobe o Next em `0.0.0.0:3000` (não `localhost`); acesso ao banco
-pelo host é `127.0.0.1:5432`, publicado pelo serviço `qlmed-db`.
+`npm run dev` sobe o Next em `0.0.0.0:3000` (não `localhost`); no `dev` o
+túnel do writer publica `127.0.0.1:5435`.
 
 ### Deploy e migração de schema
 
@@ -186,14 +165,15 @@ destino público.
 - App: `https://app.qlmed.com.br/` (local: 13000 produção `127.0.0.1` only, 3000
   dev no checkout main; preview canônico **só** `:3002` →
   `.worktrees/preview`)
-- n8n: `https://n8n.qlmed.com.br/` (local: 5678)
 - Evolution API: `https://evolution.qlmed.com.br/` (local: 8085)
+- n8n QLMED: aposentado (SPEC-046 / SPEC-081). Webhook inbound
+  `/api/webhooks/n8n` permanece; `/api/integrations/n8n/*` responde 410.
 - PostgreSQL: `127.0.0.1:5432`, publicado por `qlmed-db` do compose canônico
 
 ### Preview DEV canônico (Tailscale) — obrigatório antes de merge/deploy de UI
 
 Worktree permanente: `/home/marce/qlmed/.worktrees/preview`  
-URL: `http://100.83.11.58:3002`  
+URL: `http://100.68.84.119:3002`  
 Unit: `systemctl --user start qlmed-dev-preview`  
 Starter: `ops/scripts/qlmed-dev-preview-starter.mjs`  
 (`QLMED_PREVIEW_CWD` opcional para apontar a uma worktree de feature.)
@@ -204,9 +184,11 @@ checkout/rebase do tip **nessa** worktree (ou override do `cwd` do starter),
 smoke em `:3002`, **depois** PR/merge/deploy.
 
 - `NEXTAUTH_URL` (obrigatória em `src/lib/env.ts`): preview HTTP exige
-  `http://100.83.11.58:3002`. Herdar `https://app.qlmed.com.br` → cookie
+  `http://100.68.84.119:3002`. Herdar `https://app.qlmed.com.br` → cookie
   `Secure`/`__Host-` → CSRF drop → catch do `signIn` = “Erro ao fazer login”.
   Senha errada é outra mensagem (“Senha inválida”).
+- `DATABASE_URL`: túnel `127.0.0.1:5435` (writer vps2). Dump `:5434` o starter
+  recusa. Workers de fundo desligados (`QLMED_DISABLE_BACKGROUND_SERVICES`).
 - Diagnóstico refused: `ss` sem listen = processo morto (`systemctl --user
   restart qlmed-dev-preview`). Curl local 200/307 + Windows refused =
   Tailscale/browser (IPv6: Next pode não ouvir `[::]`).
@@ -243,8 +225,8 @@ smoke em `:3002`, **depois** PR/merge/deploy.
   `prisma migrate deploy`, depois inicia `node server.js`.
 - Node 22 via nvm no host (dev); imagem Alpine (produção). Puppeteer com
   Chromium do sistema para geração de PDF.
-- Acesso de dev via Tailscale: `http://100.83.11.58:3000` (main); preview
-  canônico **só** `http://100.83.11.58:3002` (`.worktrees/preview`) —
+- Acesso de dev via Tailscale: `http://100.68.84.119:3000` (main); preview
+  canônico **só** `http://100.68.84.119:3002` (`.worktrees/preview`) —
   ver Preview DEV canônico.
 - `nvm` obrigatório: `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 22`
 - `n8n` `$env` expressions (`{{ $env.QLMED_API_URL }}` etc.): versões recentes do

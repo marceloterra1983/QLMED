@@ -65,7 +65,12 @@ const EXPECTED_MIGRATIONS = [
   {
     name: '20260911120000_company_document_manufacturer',
     sha256: 'dd3aa4f4480c5a7f742082be9f3ad6ae1d3557d719f17216d05187b567249045',
-  }];
+  },
+  {
+    name: '20260918120000_expand_money_float_decimal',
+    sha256: '6be7cbedffe776f03c7cfdc27224b31de369e088f78b39673304c4bb28f4631b',
+  },
+];
 // Compatibilidade com quem ainda lê um nome só: a última da lista.
 const EXPECTED_MIGRATION = EXPECTED_MIGRATIONS[EXPECTED_MIGRATIONS.length - 1].name;
 const EXPECTED_SQL_SHA256 = EXPECTED_MIGRATIONS[EXPECTED_MIGRATIONS.length - 1].sha256;

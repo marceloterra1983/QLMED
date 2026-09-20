@@ -142,21 +142,25 @@ describe('lista fiscal de NF-e recebidas — render', () => {
       const url = listCall();
       expect(url).toContain('type=NFE');
       expect(url).toContain('direction=received');
+      expect(url).toContain('limit=50');
+      expect(url).not.toContain('limit=5000');
     });
   });
 
-  it('avisa que a lista está truncada quando o total passa do que foi carregado', async () => {
-    // QLMED-UI-001: a API tem teto de 5000 e a página pedia limit=5000, mas
-    // imprimia pagination.total. Com 5001 no filtro, a tela dizia "5001" sob
-    // 5000 linhas — o operador concluía que tinha conferido o período inteiro.
+  it('mostra o recorte paginado quando o total passa do que foi carregado', async () => {
+    // QLMED-UI-001 + SPEC-077: a tela não pode imprimir o total como se a
+    // tabela tivesse o período inteiro. Com paginação, descreve o intervalo.
     stubFetch({ invoices: [invoice(), invoice({ id: 'inv-2', number: '000124' })], total: 5001 });
 
     render(<InvoicesPage />);
     await screen.findByRole('table');
 
-    const status = await screen.findByRole('status');
-    expect(status.textContent).toContain('2 de 5001 nota(s)');
-    expect(status.textContent).toMatch(/truncada/i);
+    await waitFor(() => {
+      expect(screen.getByText(/1–2 de 5001 nota\(s\)/)).toBeTruthy();
+    });
+    expect(screen.getByText(/página 1 de 101/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Próxima' })).toBeTruthy();
+    expect(screen.queryByText(/truncada/i)).toBeNull();
   });
 
   it('não avisa nada quando a página carregou tudo', async () => {

@@ -1,0 +1,129 @@
+---
+id: SPEC-076
+status: draft
+owner: QLMED
+related_decisions: []
+affected_modules:
+  - nfe-emission
+---
+
+# Feature Specification: Recomendação de follow-up após SEFAZ
+
+**Feature Branch**: `feat/076-jev-sefaz-followup`
+
+**Created**: 2026-09-18
+
+**Status**: Draft
+
+**Input**: Depois que a SEFAZ já classificou a emissão (autorizada, rejeitada ou
+pendente), o operador ainda precisa saber se espera, tenta de novo ou trata na
+hora. Um modelo de decisão externo (Jev, via OpenRouter) pode recomendar esse
+passo. Ele NÃO pode mudar o desfecho fiscal.
+
+## Problem
+
+`cStat` e `xMotivo` já dizem o que a SEFAZ decidiu. O que falta é um julgamento
+operacional: “lote em processamento” pede espera; certificado ou schema pede
+gente. Sem isso, rejeição e pendência caem no mesmo saco para quem olha o log.
+
+## User scenarios and testing
+
+### User Story 1 — Lote em processamento não pagina gente (Priority: P1)
+
+Como operador, quando a SEFAZ devolve lote em processamento, o sistema
+recomenda retry/espera e não trata isso como alerta humano.
+
+**Independent Test**: Dado outcome `pending` ou `rejected` com motivo de lote
+em processamento, a recomendação é `retry` (ou equivalente de espera) e
+`needs_human` fica baixo.
+
+**Acceptance Scenarios**:
+
+1. **AC-001** — Given um desfecho SEFAZ já calculado com `cStat` 323 e motivo
+   de lote em processamento, when o follow-up corre, then a ação recomendada
+   MUST NOT ser alertar um humano.
+2. **AC-002** — Given o mesmo desfecho, when o follow-up corre, then o
+   resultado fiscal (`pending`/`rejected` e o `cStat`) permanece o original.
+
+### User Story 2 — Sem chave, o fluxo fiscal não muda (Priority: P1)
+
+Como operador, se a chave do serviço de decisão não estiver configurada, a
+emissão segue exatamente como hoje.
+
+**Independent Test**: Sem a variável de ambiente da chave, o follow-up devolve
+`skipped` e não lança.
+
+**Acceptance Scenarios**:
+
+1. **AC-003** — Given chave ausente, when o follow-up é pedido, then o
+   resultado é `skipped` e nenhuma chamada externa é tentada.
+2. **AC-004** — Given o serviço de decisão falha ou estoura tempo, when a
+   emissão já tem desfecho SEFAZ, then a autorização MUST NOT falhar por causa
+   do follow-up.
+
+### User Story 3 — Rejeição de negócio pode recomendar alerta (Priority: P2)
+
+Como operador, uma rejeição de certificado/schema/duplicidade pode ser
+classificada como alerta humano, ainda sem disparar WhatsApp nesta versão.
+
+**Independent Test**: Motivo de certificado vencido produz `alert` ou
+`needs_human` alto; nenhum canal WhatsApp é enviado por este spec.
+
+**Acceptance Scenarios**:
+
+1. **AC-005** — Given `xMotivo` descrevendo certificado inválido, when o
+   follow-up corre com o serviço disponível, then a recomendação é `alert`
+   (ou `needs_human` ≥ 0,7).
+2. **AC-006** — Given qualquer recomendação, when esta versão corre, then
+   MUST NOT enfileirar WhatsApp nem e-mail.
+
+### Edge Cases
+
+- Outcome `authorized`: follow-up MUST NOT ser chamado.
+- XML fiscal completo MUST NOT ser enviado ao serviço de decisão.
+- Timeout ou HTTP de erro: `skipped`, log de aviso, emissão intacta.
+
+## Requirements
+
+- **FR-001**: O desfecho fiscal (autorizado / rejeitado / pendente e o `cStat`)
+  MUST ser decidido só pela SEFAZ / interpretador atual. O follow-up MUST NOT
+  alterá-lo.
+- **FR-002**: Follow-up MUST correr só após `pending` ou `rejected`.
+- **FR-003**: Sem chave configurada, follow-up MUST ser `skipped` e MUST NOT
+  chamar rede.
+- **FR-004**: Falha do follow-up MUST NOT mudar o status da emissão.
+- **FR-005**: O estado enviado ao serviço MUST ser só outcome, `cStat`,
+  `xMotivo` e ambiente — sem XML, certificado ou chave de acesso.
+- **FR-006**: Esta versão MUST NOT enviar WhatsApp, e-mail ou push.
+- **FR-007**: Recomendação e scores MUST ir só para log estruturado (sem
+  segredos).
+
+## Out of scope
+
+- Substituir `interpretAutorizacaoResponse`.
+- Classificar pastas de documentos (`documentos/classify.ts`).
+- WhatsApp / outbox.
+- SDK TypeSafe nativo (`TYPESAFE_API_KEY`); só o caminho OpenRouter.
+
+## Success Criteria
+
+- **SC-001**: Em 100% dos casos de teste, o `cStat` depois do follow-up é o
+  mesmo de antes.
+- **SC-002**: Sem chave, zero chamadas de rede no follow-up.
+- **SC-003**: Lote em processamento não gera recomendação de alerta humano.
+- **SC-004**: Falha simulada do serviço não transforma emissão autorizável em
+  erro de autorização.
+
+## Assumptions
+
+- A chave OpenRouter fica só em ambiente de servidor, nunca no browser.
+- O serviço de decisão é o Jev via OpenRouter Decisions, já validado no
+  playground local.
+- Operadores leem logs da emissão NF-e no ambiente Omarchy/vps.
+
+## Test strategy
+
+- Testes unitários do módulo de follow-up com `decide` injetado (sem rede).
+- Casos: sem chave; lote 323 → retry; certificado → alert; `decide` lança →
+  skipped.
+- `npx tsc --noEmit` no worktree.

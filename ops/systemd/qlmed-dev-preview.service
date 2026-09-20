@@ -1,0 +1,17 @@
+[Unit]
+Description=QLMED preview Next.js :3002
+After=network-online.target docker.service qlmed-prod-db-tunnel.service
+Wants=network-online.target qlmed-prod-db-tunnel.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/marce/qlmed/.worktrees/preview
+Environment=PATH=/home/marce/.local/share/mise/shims:/home/marce/.local/bin:/usr/bin
+Environment=QLMED_PREVIEW_CWD=/home/marce/qlmed/.worktrees/preview
+EnvironmentFile=-/home/marce/qlmed/app/.env
+ExecStart=/home/marce/.local/share/mise/installs/node/26.8.2/bin/node /home/marce/qlmed/app/ops/scripts/qlmed-dev-preview-starter.mjs
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

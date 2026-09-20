@@ -185,7 +185,7 @@ describe('SPEC-042 L7 — logs do alerta não carregam caption, buffer nem token
     seed();
   });
 
-  it('caminho feliz: nenhuma chamada recebe Buffer, caption, accessToken ou refreshToken', async () => {
+  it('caminho feliz: tick de vencimento não envia e não loga caption, Buffer nem token', async () => {
     const { runDocumentosAlertTick } = await import('@/lib/documentos/alerts');
     await runDocumentosAlertTick(
       COMPANY,
@@ -193,13 +193,12 @@ describe('SPEC-042 L7 — logs do alerta não carregam caption, buffer nem token
       at8sp('2026-09-12'),
     );
 
-    expect(logged.calls.length).toBeGreaterThan(0);
     for (const args of logged.calls) {
       for (const arg of args) assertSafe(arg);
     }
   });
 
-  it('caminho de erro: falha da Evolution também não vaza caption, Buffer nem token', async () => {
+  it('caminho de erro: target que falharia não é chamado; lastError permanece vazio', async () => {
     const { runDocumentosAlertTick } = await import('@/lib/documentos/alerts');
     await runDocumentosAlertTick(
       COMPANY,
@@ -207,13 +206,9 @@ describe('SPEC-042 L7 — logs do alerta não carregam caption, buffer nem token
       at8sp('2026-09-12'),
     );
 
-    expect(logged.calls.length).toBeGreaterThan(0);
     for (const args of logged.calls) {
       for (const arg of args) assertSafe(arg);
     }
-    expect(memory.state?.lastError).toBeTruthy();
-    expect(memory.state?.lastError).not.toContain('leak');
-    expect(memory.state?.lastError).not.toContain('eyJbbbbbbbbbb');
-    expect(memory.state?.lastError).toMatch(/\[redacted\]/);
+    expect(memory.state?.lastError).toBeFalsy();
   });
 });

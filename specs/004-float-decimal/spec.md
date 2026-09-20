@@ -124,7 +124,7 @@ and dual-write them from the store.
 
 - Production `prisma migrate deploy` in this cycle.
 - Contract phase (drop Float columns, switch HTTP types to Decimal).
-- The remaining 77 `Float` columns after `InvoiceDuplicata`.
+- Remaining tax/rate/quantity `Float` columns after T009 (T010–T012).
 - Residual FKs/`@relation` (still ADR-0006 item 1, not this spec's first PR).
 - Next.js 16 / Tailwind 4.
 - Changing SPEC-002's closed satellite-store CRUD scope.

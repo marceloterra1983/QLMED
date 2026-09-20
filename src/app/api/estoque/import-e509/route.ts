@@ -4,6 +4,9 @@ import { getOrCreateSingleCompany } from '@/lib/single-company';
 import prisma from '@/lib/prisma';
 import { updateNfeEntryItemLot, cloneNfeEntryItemBatch } from '@/lib/stock-entry-store';
 import { registerInvoiceEntry } from '@/lib/register-entry';
+import { syncEntryItemMovement } from '@/lib/stock-ledger';
+import { resolveUniqueLotExpiryFromXml } from '@/lib/e509/lot-expiry';
+import { isOdsFile, streamOdsRows } from '@/lib/ods-rows';
 import { apiError, apiValidationError } from '@/lib/api-error';
 import { createLogger } from '@/lib/logger';
 import { z } from 'zod';
@@ -32,6 +35,40 @@ interface E509Row {
   qtdeLote: number | null;
 }
 
+type RowReader = {
+  index0: number;
+  str: (col: number) => string;
+  num: (col: number) => number | null;
+};
+
+function collectE509FromRow(
+  row: RowReader,
+  state: { headerNF: string; headerLote: string; rows: E509Row[] },
+): void {
+  if (row.index0 === HEADER_ROW) {
+    state.headerNF = row.str(COL_NF_NUMBER);
+    state.headerLote = row.str(COL_LOTE);
+    return;
+  }
+  if (row.index0 < DATA_START_ROW) return;
+
+  const lote = row.str(COL_LOTE);
+  if (!lote) return;
+
+  const nfNumber = row.str(COL_NF_NUMBER).replace(/^0+/, '');
+  const accessKey = row.str(COL_ACCESS_KEY);
+  if (!nfNumber && !accessKey) return;
+
+  state.rows.push({
+    nfNumber,
+    accessKey,
+    codigoInterno: row.str(COL_CODIGO_INTERNO),
+    referencia: row.str(COL_REFERENCIA),
+    lote,
+    qtdeLote: row.num(COL_QTDE_LOTE),
+  });
+}
+
 export async function POST(req: Request) {
   try {
     let userId: string;
@@ -50,57 +87,32 @@ export async function POST(req: Request) {
     const fileParsed = fileSchema.safeParse({ file });
     if (!fileParsed.success) return apiValidationError(fileParsed.error);
 
-    // Streaming: `workbook.xlsx.load()` monta o livro inteiro e mata o processo
-    // bem antes do teto do upload (medições em `streamXlsxRows`). Aqui o custo
-    // é o da linha, e o cabeçalho é conferido depois de a leitura terminar.
-    let headerNF = '';
-    let headerLote = '';
-    const rows: E509Row[] = [];
-    const totalRows = await streamXlsxRows(fileParsed.data.file, (row) => {
-      if (row.index0 === HEADER_ROW) {
-        headerNF = row.str(COL_NF_NUMBER);
-        headerLote = row.str(COL_LOTE);
-        return;
-      }
-      if (row.index0 < DATA_START_ROW) return;
-
-      const lote = row.str(COL_LOTE);
-      if (!lote) return;
-
-      const nfNumber = row.str(COL_NF_NUMBER).replace(/^0+/, '');
-      const accessKey = row.str(COL_ACCESS_KEY);
-      if (!nfNumber && !accessKey) return;
-
-      rows.push({
-        nfNumber,
-        accessKey,
-        codigoInterno: row.str(COL_CODIGO_INTERNO),
-        referencia: row.str(COL_REFERENCIA),
-        lote,
-        qtdeLote: row.num(COL_QTDE_LOTE),
-      });
-    });
+    const state = { headerNF: '', headerLote: '', rows: [] as E509Row[] };
+    const ods = await isOdsFile(fileParsed.data.file);
+    const totalRows = ods
+      ? await streamOdsRows(fileParsed.data.file, (row) => collectE509FromRow(row, state))
+      : await streamXlsxRows(fileParsed.data.file, (row) => collectE509FromRow(row, state));
 
     if (totalRows === 0) {
       return NextResponse.json({ error: 'Planilha vazia' }, { status: 400 });
     }
-    if (!headerNF.includes('NF') || !headerLote.includes('Lote')) {
+    if (!state.headerNF.includes('NF') || !state.headerLote.includes('Lote')) {
       return NextResponse.json({
-        error: `Formato E509 não reconhecido. Cabeçalho col 0: "${headerNF}", col 82: "${headerLote}"`,
+        error: `Formato E509 não reconhecido. Cabeçalho col 0: "${state.headerNF}", col 82: "${state.headerLote}"`,
       }, { status: 400 });
     }
 
+    const rows = state.rows;
     if (rows.length === 0) {
-      return NextResponse.json({ imported: 0, skipped: 0, notFound: 0, registered: 0, errors: [], totalRows: 0 });
+      return NextResponse.json({ imported: 0, skipped: 0, notFound: 0, registered: 0, expiryFilled: 0, errors: [], totalRows: 0 });
     }
 
-    // Collect unique access keys and NF numbers for batch lookup
     const accessKeys = Array.from(new Set(rows.filter((r) => r.accessKey).map((r) => r.accessKey)));
     const nfNumbers = Array.from(new Set(rows.map((r) => r.nfNumber).filter(Boolean)));
 
-    // Find invoices by access key
-    const invoiceByKey = new Map<string, string>(); // accessKey → invoiceId
-    const invoiceByNumber = new Map<string, string>(); // number → invoiceId
+    const invoiceByKey = new Map<string, string>();
+    const invoiceByNumber = new Map<string, string>();
+    const xmlByInvoiceId = new Map<string, string>();
 
     if (accessKeys.length > 0) {
       const BATCH = 100;
@@ -108,16 +120,16 @@ export async function POST(req: Request) {
         const batch = accessKeys.slice(i, i + BATCH);
         const akRows = await prisma.invoice.findMany({
           where: { companyId: company.id, accessKey: { in: batch } },
-          select: { id: true, accessKey: true, number: true },
+          select: { id: true, accessKey: true, number: true, xmlContent: true },
         });
         for (const row of akRows) {
           if (row.accessKey) invoiceByKey.set(row.accessKey, row.id);
           if (row.number) invoiceByNumber.set(row.number.replace(/^0+/, ''), row.id);
+          if (row.xmlContent) xmlByInvoiceId.set(row.id, row.xmlContent);
         }
       }
     }
 
-    // Fallback: find invoices by number
     const missingNumbers = nfNumbers.filter((n) => !invoiceByNumber.has(n));
     if (missingNumbers.length > 0) {
       const BATCH = 100;
@@ -125,15 +137,15 @@ export async function POST(req: Request) {
         const batch = missingNumbers.slice(i, i + BATCH);
         const nRows = await prisma.invoice.findMany({
           where: { companyId: company.id, number: { in: batch } },
-          select: { id: true, number: true },
+          select: { id: true, number: true, xmlContent: true },
         });
         for (const row of nRows) {
           if (row.number) invoiceByNumber.set(row.number.replace(/^0+/, ''), row.id);
+          if (row.xmlContent) xmlByInvoiceId.set(row.id, row.xmlContent);
         }
       }
     }
 
-    // Step 1: Auto-register invoices that don't have nfe_entry_item rows yet
     const allInvoiceIds = Array.from(
       new Set([...Array.from(invoiceByKey.values()), ...Array.from(invoiceByNumber.values())]),
     );
@@ -163,10 +175,43 @@ export async function POST(req: Request) {
       }
     }
 
-    // Step 2: Now fill in lots from E509
     let imported = 0;
     let skipped = 0;
     let notFound = 0;
+    let expiryFilled = 0;
+
+    async function applyLot(
+      invoiceId: string,
+      itemId: number,
+      data: { lot: string; lotExpiry?: string | null; lotQuantity?: number | null },
+    ) {
+      const updated = await updateNfeEntryItemLot(company.id, invoiceId, itemId, {
+        lot: data.lot,
+        lotExpiry: data.lotExpiry ?? null,
+        lotQuantity: data.lotQuantity ?? null,
+      });
+      if (updated) {
+        try {
+          await syncEntryItemMovement(company.id, invoiceId, {
+            id: Number(updated.id),
+            itemNumber: Number(updated.item_number),
+            codigoInterno: updated.codigo_interno,
+            supplierCode: updated.supplier_code,
+            productName: updated.product_name,
+            supplierDescription: updated.supplier_description,
+            registryId: updated.registry_id,
+            lot: updated.lot,
+            lotExpiry: updated.lot_expiry,
+            lotSerial: updated.lot_serial,
+            quantity: updated.quantity,
+            lotQuantity: updated.lot_quantity,
+          });
+        } catch (err) {
+          log.error({ err, invoiceId, itemId }, 'Falha ao espelhar lote E509 no ledger');
+        }
+      }
+      return updated;
+    }
 
     for (const row of rows) {
       let invoiceId = row.accessKey ? invoiceByKey.get(row.accessKey) : undefined;
@@ -177,7 +222,10 @@ export async function POST(req: Request) {
         continue;
       }
 
-      let matchRows: Array<{ id: number; lot: string | null; quantity: number | null }> = [];
+      const xml = xmlByInvoiceId.get(invoiceId) || '';
+      const lotExpiry = resolveUniqueLotExpiryFromXml(xml, row.lote);
+
+      let matchRows: Array<{ id: number; lot: string | null; lotExpiry: string | null; quantity: number | null }> = [];
       if (row.referencia) {
         matchRows = await prisma.nfeEntryItem.findMany({
           where: {
@@ -185,7 +233,7 @@ export async function POST(req: Request) {
             invoiceId,
             supplierCode: row.referencia,
           },
-          select: { id: true, lot: true, quantity: true },
+          select: { id: true, lot: true, lotExpiry: true, quantity: true },
           orderBy: { id: 'asc' },
           take: 10,
         });
@@ -197,7 +245,7 @@ export async function POST(req: Request) {
             invoiceId,
             codigoInterno: row.codigoInterno,
           },
-          select: { id: true, lot: true, quantity: true },
+          select: { id: true, lot: true, lotExpiry: true, quantity: true },
           orderBy: { id: 'asc' },
           take: 10,
         });
@@ -212,21 +260,53 @@ export async function POST(req: Request) {
       const itemQty = Number(matchRows[0].quantity || 0);
       if (nullLotRow) {
         const effQty = itemQty === 1 ? 1 : row.qtdeLote;
-        await updateNfeEntryItemLot(company.id, invoiceId, nullLotRow.id, {
+        await applyLot(invoiceId, nullLotRow.id, {
           lot: row.lote,
+          lotExpiry,
           lotQuantity: effQty,
         });
         imported++;
+        if (lotExpiry) expiryFilled++;
       } else {
         const existingLot = matchRows.find((r) => r.lot === row.lote);
         if (existingLot) {
+          if (lotExpiry && !existingLot.lotExpiry) {
+            await applyLot(invoiceId, existingLot.id, {
+              lot: row.lote,
+              lotExpiry,
+              lotQuantity: itemQty === 1 ? 1 : row.qtdeLote,
+            });
+            expiryFilled++;
+          }
           skipped++;
         } else {
-          await cloneNfeEntryItemBatch(company.id, invoiceId, matchRows[0].id, {
+          const created = await cloneNfeEntryItemBatch(company.id, invoiceId, matchRows[0].id, {
             lot: row.lote,
+            lotExpiry,
             lotQuantity: itemQty === 1 ? 1 : row.qtdeLote,
           });
+          if (created) {
+            try {
+              await syncEntryItemMovement(company.id, invoiceId, {
+                id: Number(created.id),
+                itemNumber: Number(created.item_number),
+                codigoInterno: created.codigo_interno,
+                supplierCode: created.supplier_code,
+                productName: created.product_name,
+                supplierDescription: created.supplier_description,
+                registryId: created.registry_id,
+                lot: created.lot,
+                lotExpiry: created.lot_expiry,
+                lotSerial: created.lot_serial,
+                quantity: created.quantity,
+                lotQuantity: created.lot_quantity,
+              });
+            } catch (err) {
+              log.error({ err, invoiceId }, 'Falha ao espelhar clone E509 no ledger');
+            }
+          }
           imported++;
+          if (lotExpiry) expiryFilled++;
         }
       }
     }
@@ -236,7 +316,9 @@ export async function POST(req: Request) {
       skipped,
       notFound,
       registered: autoRegistered,
+      expiryFilled,
       totalRows: rows.length,
+      format: ods ? 'ods' : 'xlsx',
     });
   } catch (error) {
     return apiError(error, 'estoque/import-e509');

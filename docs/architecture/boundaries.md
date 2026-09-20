@@ -25,7 +25,7 @@ cases Prisma cannot express adequately and must remain parameterized.
 
 Persistence boundary: one canonical `postgres` database through `DATABASE_URL`
 and disposable CI `qlmed_ci` — see
-[ADR-0007](../decisions/0007-single-canonical-database.md).
+[ADR-0020](../decisions/0020-omarchy-next-canonical-writer-tunnel.md).
 
 ## Integrations
 

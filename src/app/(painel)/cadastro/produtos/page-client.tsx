@@ -10,21 +10,23 @@ import { formatInt } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useRole } from '@/hooks/useRole';
 import { useModalBackButton } from '@/hooks/useModalBackButton';
-import InvoiceDetailsModal from '@/components/InvoiceDetailsModal';
-import SettingsModal from './SettingsModal';
+import dynamic from 'next/dynamic';
 import type { ProductRow, ProductsHierarchyCounts, ProductsSummary, ProductsResponse, SortField } from './types';
 import type { HierOptions } from './components/product-utils';
-import { filterProductRows } from './components/product-utils';
+import { DEFAULT_PRODUCT_LINE_STATUS, filterProductRows } from './components/product-utils';
 import ProductFilters from './components/ProductFilters';
-import ProductDetailModal from './components/ProductDetailModal';
-import BulkEditModal from './components/BulkEditModal';
 import ExportCSVButton from './components/ExportCSVButton';
-import ImportSpicaModal from './components/ImportSpicaModal';
 import ProductTable from './components/ProductTable';
 import { allCollapseKeys, expandCollapseKeys } from './components/product-group-visibility';
-import HistoryModal from './components/HistoryModal';
 import { ANVISA_PRODUTOS_SAUDE_URL } from '@/lib/anvisa-consulta';
 import PageHeader from '@/components/PageHeader';
+
+const InvoiceDetailsModal = dynamic(() => import('@/components/InvoiceDetailsModal'), { ssr: false });
+const SettingsModal = dynamic(() => import('./SettingsModal'), { ssr: false });
+const ProductDetailModal = dynamic(() => import('./components/ProductDetailModal'), { ssr: false });
+const BulkEditModal = dynamic(() => import('./components/BulkEditModal'), { ssr: false });
+const ImportSpicaModal = dynamic(() => import('./components/ImportSpicaModal'), { ssr: false });
+const HistoryModal = dynamic(() => import('./components/HistoryModal'), { ssr: false });
 
 /** Tamanho de página das ordenações flat (a hierarquia carrega o catálogo inteiro). */
 const PAGE_SIZE = 50;
@@ -61,7 +63,9 @@ export default function ProdutosPage() {
   const [subgroupFilter, setSubgroupFilter] = useState<string>('');
   const [sortBy, setSortBy] = useState<SortField>('productType');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [lineStatusFilter, setLineStatusFilter] = useState<'active' | 'outOfLine' | 'all'>('all');
+  const [lineStatusFilter, setLineStatusFilter] = useState<'active' | 'outOfLine' | 'all'>(
+    DEFAULT_PRODUCT_LINE_STATUS,
+  );
   // Hierarquia Linha > Grupo > Subgrupo: a árvore só faz sentido com o catálogo
   // inteiro (paginar 50 escondia linhas e subgrupos). Ordenações flat paginam.
   const isTreeView = sortBy === 'productType';
@@ -79,7 +83,7 @@ export default function ProdutosPage() {
   const serverType = isTreeView ? '' : typeFilter;
   const serverSubtype = isTreeView ? '' : subtypeFilter;
   const serverSubgroup = isTreeView ? '' : subgroupFilter;
-  const serverLineStatus = isTreeView ? 'all' : lineStatusFilter;
+  const serverLineStatus = lineStatusFilter;
 
   const filtered = useMemo(
     () => (isTreeView
@@ -93,7 +97,9 @@ export default function ProdutosPage() {
       : products),
     [isTreeView, products, search, typeFilter, subtypeFilter, subgroupFilter, lineStatusFilter],
   );
-  const treeFilterActive = Boolean(search || typeFilter || subtypeFilter || subgroupFilter || lineStatusFilter !== 'all');
+  const treeFilterActive = Boolean(
+    search || typeFilter || subtypeFilter || subgroupFilter || lineStatusFilter === 'outOfLine',
+  );
 
   // Na visão Linha a busca é local. Sem isto o contador cai e as linhas
   // continuam atrás de "Clique para expandir".
@@ -586,8 +592,9 @@ export default function ProdutosPage() {
         />
       )}
 
-      {/* Invoice detail modal */}
-      <InvoiceDetailsModal isOpen={!!invoiceModalId} onClose={() => setInvoiceModalId(null)} invoiceId={invoiceModalId} />
+      {invoiceModalId && (
+        <InvoiceDetailsModal isOpen onClose={() => setInvoiceModalId(null)} invoiceId={invoiceModalId} />
+      )}
 
       {spicaImportOpen && (
         <ImportSpicaModal

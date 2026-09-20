@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { Session } from 'next-auth';
 import { buildNavItems, PAGE_LABELS } from '@/components/SidebarNav';
@@ -44,6 +46,11 @@ describe('SPEC-042 — as fontes de verdade do menu não podem divergir', () => 
       expect(PAGE_LABELS[path], `sem PAGE_LABELS para ${path}`).toBeDefined();
       expect(PAGE_LABELS[path].icon).toBeTruthy();
     }
+  });
+
+  it('não faz prefetch das rotas do menu (SPEC-077)', () => {
+    const src = readFileSync(resolve(__dirname, '../SidebarNav.tsx'), 'utf8');
+    expect(src).toMatch(/prefetch=\{false\}/);
   });
 
   it('Documentos aparece no topo do sidebar, acima de Cadastros', () => {

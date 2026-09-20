@@ -4,9 +4,9 @@ Fonte de verdade dos manifests de producao do QLMED.
 
 ## Host
 
-- producao principal: `server`
+- producao principal: `vps2`
 - app: `https://app.qlmed.com.br`
-- n8n: `https://n8n.qlmed.com.br`
+- n8n: aposentado
 - evolution: `https://evolution.qlmed.com.br`
 - publicacao: GitHub Actions `QLMED Production Deploy` (manual)
 

@@ -1,0 +1,13 @@
+[Unit]
+Description=QLMED SSH tunnel to vps2 canonical postgres (127.0.0.1:5435)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/ssh -N -o BatchMode=yes -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -L 127.0.0.1:5435:127.0.0.1:5432 vps2
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target

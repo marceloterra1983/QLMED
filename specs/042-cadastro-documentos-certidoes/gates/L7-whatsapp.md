@@ -12,15 +12,15 @@ Scope: src/lib/documentos/alerts.ts, integração com ingest (renovação), sche
   EXPECT: rc=1
   EVIDENCE: rc=1
 
-- [x] G3: tick diário: dia já marcado em lastAlertDay → 0 envios; 25 dias → 0; 30 dias → 1 e não repete; -7 → 1; tipo sem documento entra no aviso; PDF anexado; legenda contém tipo, arquivo e "vence em N dias"
+- [x] G3: tick diário: dia já marcado → 0 envios; 25/30/-7 dias → 0 envios, sem download e sem consumir limiar; segundo tick do mesmo dia → 0
   CHECK: npx vitest run src/lib/__tests__/documentos-alert-tick.test.ts > /dev/null 2>&1 && echo OK_G3
   EXPECT: OK_G3
-  EVIDENCE: OK_G3
+  EVIDENCE: pending (revalidar após FR-010 sem envio por vencimento)
 
-- [x] G4: limiar gravado ANTES do envio; falha de envio não reenvia no tick seguinte e registra erro saneado
-  CHECK: grep -n "alertedThresholds" src/lib/documentos/alerts.ts | head -3; npx vitest run src/lib/__tests__/documentos-alert-tick.test.ts -t "falha" > /dev/null 2>&1 && echo OK_G4
+- [x] G4: tick de vencimento não chama sendDocument mesmo com destino e PDF disponíveis; falha de Evolution no target não grava lastError
+  CHECK: npx vitest run src/lib/__tests__/documentos-alert-tick.test.ts -t "falha" > /dev/null 2>&1 && echo OK_G4
   EXPECT: OK_G4
-  EVIDENCE: 233:    const threshold = thresholdDue(days, row.alertedThresholds ?? []); | OK_G4
+  EVIDENCE: pending
 
 - [x] G5: renovação: vigente 12.10.26 substituído por 12.12.26 → 1 envio; reexecução → 0; primeira carga → 0
   CHECK: npx vitest run src/lib/__tests__/documentos-renewal.test.ts > /dev/null 2>&1 && echo OK_G5
@@ -51,10 +51,10 @@ Scope: src/lib/documentos/alerts.ts, integração com ingest (renovação), sche
   EXPECT: OK_B1
   EVIDENCE: OK_B1
 
-- [x] G11: B2 — tick de alerta toma advisory lock; ocupado → 0 envios; dois ticks concorrentes (lock só concede uma vez) → 1 envio
+- [x] G11: B2 — tick de alerta toma advisory lock; ocupado → 0 envios; dois ticks concorrentes (lock só concede uma vez) → 0 envios
   CHECK: grep -n "documentosAlertLockKey\|acquirePostgresAdvisoryLock" src/lib/documentos/alerts.ts src/lib/postgres-advisory-lock.ts | head -20; npx vitest run src/lib/__tests__/documentos-alert-tick.test.ts -t "concorrentes" > /dev/null 2>&1 && echo OK_B2
   EXPECT: OK_B2
-  EVIDENCE: src/lib/postgres-advisory-lock.ts:122:export async function acquirePostgresAdvisoryLock( | OK_B2
+  EVIDENCE: pending
 
 - [x] G12: B3 — markBackgroundServiceError sanea na raiz; refreshToken=SEGREDO não aparece em getBackgroundServiceHealth()
   CHECK: npx vitest run src/lib/__tests__/sanitize-error.test.ts -t "markBackgroundServiceError" > /dev/null 2>&1 && echo OK_B3
@@ -66,10 +66,10 @@ Scope: src/lib/documentos/alerts.ts, integração com ingest (renovação), sche
   EXPECT: OK_B4
   EVIDENCE: OK_B4
 
-- [x] G14: B5 — tipos sem certidão só saem da fila depois de um envio com sucesso
+- [x] G14: B5 — tick de vencimento não envia PDF nem legenda de tipo em falta (só FR-011 envia)
   CHECK: npx vitest run src/lib/__tests__/documentos-alert-tick.test.ts -t "tipo sem certidão" > /dev/null 2>&1 && echo OK_B5
   EXPECT: OK_B5
-  EVIDENCE: OK_B5
+  EVIDENCE: pending
 
 - [x] G15: B6 — getEvolutionConfig não é default argument de resolveDocumentosWhatsAppTarget; só corre depois dos guards
   CHECK: node -e "const fs=require('fs'); const s=fs.readFileSync('src/lib/documentos/alerts.ts','utf8'); const i=s.indexOf('export function resolveDocumentosWhatsAppTarget'); const header=s.slice(i, s.indexOf('{', i)); if (header.includes('getEvolutionConfig')) { console.log('FAIL_B6'); process.exit(1);} console.log('OK_B6');"

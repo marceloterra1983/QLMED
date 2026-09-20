@@ -78,8 +78,8 @@ function parseErrorDetails(payload: unknown, fallback: string): string {
   return fallback;
 }
 
-export async function getGraphAppOnlyToken(): Promise<string> {
-  if (tokenCache && tokenCache.expiresAt > Date.now() + 60_000) {
+export async function getGraphAppOnlyToken(options?: { force?: boolean }): Promise<string> {
+  if (!options?.force && tokenCache && tokenCache.expiresAt > Date.now() + 60_000) {
     return tokenCache.value;
   }
 
@@ -129,38 +129,51 @@ function perRequestSignal(
 }
 
 async function graphJson<T>(
-  accessToken: string,
   resourcePath: string,
   signal: AbortSignal,
+  extraHeaders?: Record<string, string>,
 ): Promise<{ status: number; body: T }> {
   // `resourcePath` absoluto é o `@odata.nextLink` devolvido pelo Graph. Fixar o
   // host antes de anexar o Bearer: um nextLink forjado levaria o token embora.
   const url = /^https?:\/\//i.test(resourcePath)
     ? assertAllowedHost(resourcePath, GRAPH_ALLOWED_HOSTS).toString()
     : `${GRAPH_BASE}${resourcePath}`;
-  const response = await fetchWithResilience(
-    url,
-    {
-      headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
-      cache: 'no-store',
-    },
-    {
-      signal,
-      maxRetries: 3,
-      onRetry: (err, attempt, delayMs) => {
-        log.warn({ attempt, delayMs, err }, 'graph_request_retry');
+
+  let token = await getGraphAppOnlyToken();
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const response = await fetchWithResilience(
+      url,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+          ...extraHeaders,
+        },
+        cache: 'no-store',
       },
-    },
-  );
-  const body = (await response.json().catch(() => null)) as T;
-  return { status: response.status, body };
+      {
+        signal,
+        maxRetries: 3,
+        onRetry: (err, retryAttempt, delayMs) => {
+          log.warn({ attempt: retryAttempt, delayMs, err }, 'graph_request_retry');
+        },
+      },
+    );
+    const body = (await response.json().catch(() => null)) as T;
+    if (response.status === 401 && attempt === 0) {
+      log.warn({ status: 401 }, 'graph_token_expired_retry');
+      token = await getGraphAppOnlyToken({ force: true });
+      continue;
+    }
+    return { status: response.status, body };
+  }
+  throw new Error('graphJson: unreachable');
 }
 export async function listMailboxMessagesBySender(
   mailbox: string,
   senderEmail: string,
   options: { signal?: AbortSignal; maxPages?: number } = {},
 ): Promise<GraphMailMessage[]> {
-  const accessToken = await getGraphAppOnlyToken();
   const filter = `hasAttachments eq true and from/emailAddress/address eq '${senderEmail}'`;
   const select = 'id,subject,receivedDateTime,from,hasAttachments,internetMessageId';
   let next: string | null =
@@ -186,7 +199,6 @@ export async function listMailboxMessagesBySender(
   while (next && pages < maxPages) {
     pages++;
     const listed = await graphJson<MessageListResponse>(
-      accessToken,
       next,
       perRequestSignal(options.signal),
     );
@@ -264,7 +276,6 @@ export async function listGraphPdfAttachments(
   graphMessageId: string,
   signal?: AbortSignal,
 ): Promise<GraphPdfAttachment[]> {
-  const accessToken = await getGraphAppOnlyToken();
   const { status, body } = await graphJson<{
     value?: Array<{
       '@odata.type'?: string;
@@ -273,7 +284,6 @@ export async function listGraphPdfAttachments(
       contentBytes?: string;
     }>;
   }>(
-    accessToken,
     `/users/${encodeURIComponent(mailbox)}/messages/${encodeURIComponent(graphMessageId)}/attachments`,
     perRequestSignal(signal),
   );
@@ -319,7 +329,6 @@ export async function listMailboxMessagesBySenderWithoutAttachments(
   senderEmail: string,
   options: { signal?: AbortSignal; maxPages?: number; search?: string } = {},
 ): Promise<GraphMailMessage[]> {
-  const accessToken = await getGraphAppOnlyToken();
   const select = 'id,subject,receivedDateTime,hasAttachments,internetMessageId';
   const search = options.search ?? `"from:${senderEmail}"`;
   let next: string | null =
@@ -341,29 +350,13 @@ export async function listMailboxMessagesBySenderWithoutAttachments(
   let pages = 0;
   while (next && pages < maxPages) {
     pages++;
-    const url = /^https?:\/\//i.test(next)
-      ? assertAllowedHost(next, GRAPH_ALLOWED_HOSTS).toString()
-      : `${GRAPH_BASE}${next}`;
-    const response = await fetchWithResilience(
-      url,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: 'application/json',
-          ConsistencyLevel: 'eventual',
-        },
-        cache: 'no-store',
-      },
-      {
-        signal: perRequestSignal(options.signal),
-        maxRetries: 3,
-        onRetry: (err, attempt, delayMs) => {
-          log.warn({ attempt, delayMs, err }, 'graph_request_retry');
-        },
-      },
+    const listed = await graphJson<MessageListResponse>(
+      next,
+      perRequestSignal(options.signal),
+      { ConsistencyLevel: 'eventual' },
     );
-    const body = (await response.json().catch(() => null)) as MessageListResponse;
-    const status = response.status;
+    const status = listed.status;
+    const body: MessageListResponse = listed.body;
 
     if (status === 403 || status === 401) {
       throw new GraphMailboxError('mailbox_forbidden', status);
@@ -416,12 +409,10 @@ export async function getMailboxMessageBodyHtml(
   graphMessageId: string,
   options: { signal?: AbortSignal } = {},
 ): Promise<MailboxMessageBody> {
-  const accessToken = await getGraphAppOnlyToken();
   const { status, body } = await graphJson<{
     body?: { contentType?: string; content?: string };
     error?: { message?: string };
   }>(
-    accessToken,
     `/users/${encodeURIComponent(mailbox)}/messages/${encodeURIComponent(graphMessageId)}?$select=body`,
     perRequestSignal(options.signal),
   );

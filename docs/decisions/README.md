@@ -13,10 +13,13 @@ Statuses:
 Accepted records are historical. To change an outcome, add a new ADR and mark
 the old record as superseded.
 
-The current QLMED persistence boundary is [ADR-0007](./0007-single-canonical-database.md):
-one protected persistent `postgres` database through `DATABASE_URL`, with
-`qlmed_ci` reserved for disposable CI replay. Architecture and SPEC-002 should
-link to that record instead of duplicating the contract.
+The current QLMED persistence boundary is [ADR-0020](./0020-omarchy-next-canonical-writer-tunnel.md)
+(supersedes the Omarchy isolation clause of [ADR-0019](./0019-dev-isolated-restore-vps2-writer.md);
+canonical name and `qlmed_ci` still follow [ADR-0007](./0007-single-canonical-database.md)):
+production writer is vps2 `postgres` through `DATABASE_URL`. On Omarchy, Next
+(`:3000` / preview `:3002`) reaches that writer via SSH tunnel `127.0.0.1:5435`.
+CI and migration replay use disposable `qlmed_ci`. Architecture and SPEC-002
+should link to ADR-0020 instead of duplicating the contract.
 
 AI clients must use Spec Kit and Graphify as [ADR-0009](./0009-ai-tooling-auto-refresh.md):
 always-on Cursor rules/hooks, fail-closed `npm run ai-tooling:check`, automatic

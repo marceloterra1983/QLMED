@@ -133,6 +133,7 @@ export default function DocumentosPageClient() {
       const payload: unknown = await res.json().catch(() => null);
       if (!res.ok) {
         toast.error(apiErrorMessage(payload, 'Não foi possível atualizar agora'));
+        await load({ quiet: true });
         return;
       }
       const result = payload as { scanned?: number; upserted?: number; removed?: number };
@@ -142,6 +143,7 @@ export default function DocumentosPageClient() {
       await load({ quiet: true });
     } catch {
       toast.error('Erro de rede ao atualizar');
+      await load({ quiet: true });
     } finally {
       setSyncing(false);
     }

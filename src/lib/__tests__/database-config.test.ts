@@ -50,6 +50,20 @@ describe('canonical database configuration', () => {
     ).toThrow('Only DATABASE_URL may configure QLMED persistence');
   });
 
+  it('replay recusa o writer postgres e aceita qlmed_ci', async () => {
+    const { assertDisposableCiReplay } = await import('@/lib/database-config');
+    expect(() =>
+      assertDisposableCiReplay({
+        DATABASE_URL: 'postgresql://qlmed@127.0.0.1:5435/postgres',
+      }),
+    ).toThrow('qlmed_ci');
+    expect(
+      assertDisposableCiReplay({
+        DATABASE_URL: 'postgresql://qlmed_ci@127.0.0.1:5433/qlmed_ci',
+      }),
+    ).toMatchObject({ databaseName: 'qlmed_ci', port: '5433' });
+  });
+
   it('rejects non-PostgreSQL URLs without echoing the value', () => {
     expect(() =>
       parseCanonicalDatabaseUrl('https://user@example.invalid/qlmed'),
