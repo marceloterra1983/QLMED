@@ -1,5 +1,5 @@
 import { generateOneDriveOAuthState } from '@/lib/onedrive-oauth-state';
-import { oneDriveGraphJsonRequest } from '@/lib/onedrive-graph';
+import { fetchMicrosoftGraph, oneDriveGraphJsonRequest } from '@/lib/onedrive-graph';
 
 const GRAPH_SCOPE = 'offline_access User.Read Files.ReadWrite';
 
@@ -175,10 +175,7 @@ export async function refreshOneDriveAccessToken(refreshToken: string): Promise<
 }
 
 async function graphRequest<T>(resourcePath: string, accessToken: string): Promise<T> {
-  const response = await fetch(`https://graph.microsoft.com/v1.0${resourcePath}`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+  const response = await fetchMicrosoftGraph(accessToken, `https://graph.microsoft.com/v1.0${resourcePath}`, {
     cache: 'no-store',
     // Timeout p/ não travar em chamada à Graph API sem resposta. Painel 2026-07-22.
     signal: AbortSignal.timeout(Number(process.env.ONEDRIVE_TIMEOUT_MS) || 30000),
@@ -240,10 +237,9 @@ async function graphWrite<T>(
   resourcePath: string,
   init: RequestInit,
 ): Promise<T> {
-  const response = await fetch(`https://graph.microsoft.com/v1.0${resourcePath}`, {
+  const response = await fetchMicrosoftGraph(accessToken, `https://graph.microsoft.com/v1.0${resourcePath}`, {
     ...init,
     headers: {
-      Authorization: `Bearer ${accessToken}`,
       Accept: 'application/json',
       ...(init.headers || {}),
     },
@@ -270,10 +266,11 @@ export async function ensureOneDriveFolder(
 
   for (const segment of segments) {
     walked = walked ? `${walked}/${segment}` : segment;
-    const existing = await fetch(
+    const existing = await fetchMicrosoftGraph(
+      accessToken,
       `https://graph.microsoft.com/v1.0/drives/${encodedDriveId}/root:/${encodeURI(walked)}`,
       {
-        headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
+        headers: { Accept: 'application/json' },
         cache: 'no-store',
         signal: AbortSignal.timeout(graphTimeoutMs()),
       },
@@ -319,12 +316,12 @@ export async function uploadOneDriveFile(
 ): Promise<{ id: string; name: string }> {
   const encodedDriveId = encodeURIComponent(driveId);
   const remotePath = `${folderPath.replace(/\/$/, '')}/${fileName}`.replace(/^\/+/, '');
-  const response = await fetch(
+  const response = await fetchMicrosoftGraph(
+    accessToken,
     `https://graph.microsoft.com/v1.0/drives/${encodedDriveId}/root:/${encodeURI(remotePath)}:/content`,
     {
       method: 'PUT',
       headers: {
-        Authorization: `Bearer ${accessToken}`,
         'Content-Type': contentType,
       },
       body: new Uint8Array(content),
@@ -347,10 +344,10 @@ async function fetchOneDriveItemContent(
 ): Promise<Response> {
   const encodedDriveId = encodeURIComponent(driveId);
   const encodedItemId = encodeURIComponent(itemId);
-  const response = await fetch(
+  const response = await fetchMicrosoftGraph(
+    accessToken,
     `https://graph.microsoft.com/v1.0/drives/${encodedDriveId}/items/${encodedItemId}/content`,
     {
-      headers: { Authorization: `Bearer ${accessToken}` },
       cache: 'no-store',
       signal: AbortSignal.timeout(graphTimeoutMs()),
     },
@@ -432,11 +429,11 @@ export async function deleteOneDriveItem(
 ): Promise<void> {
   const encodedDriveId = encodeURIComponent(driveId);
   const encodedItemId = encodeURIComponent(itemId);
-  const response = await fetch(
+  const response = await fetchMicrosoftGraph(
+    accessToken,
     `https://graph.microsoft.com/v1.0/drives/${encodedDriveId}/items/${encodedItemId}`,
     {
       method: 'DELETE',
-      headers: { Authorization: `Bearer ${accessToken}` },
       cache: 'no-store',
       signal: AbortSignal.timeout(graphTimeoutMs()),
     },

@@ -1,4 +1,5 @@
 import { assertAllowedHost } from '@/lib/http-allowlist';
+import { refreshBoundOneDriveAccessToken } from '@/lib/onedrive-auth';
 
 const GRAPH_BASE_URL = 'https://graph.microsoft.com/v1.0';
 
@@ -30,6 +31,34 @@ function graphTimeoutSignal(): AbortSignal {
   return AbortSignal.timeout(Number(process.env.ONEDRIVE_TIMEOUT_MS) || 30_000);
 }
 
+/**
+ * Toda chamada Graph do OneDrive passa aqui. 401 = JWT recusado; se houver
+ * refresh bound, uma retry com token novo. Sem bind, devolve o 401 para o
+ * caller falhar como hoje — sem loop.
+ */
+export async function fetchMicrosoftGraph(
+  accessToken: string,
+  url: string,
+  init: RequestInit = {},
+): Promise<Response> {
+  let token = accessToken;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const headers = new Headers(init.headers);
+    headers.set('Authorization', `Bearer ${token}`);
+    const response = await fetch(url, {
+      ...init,
+      headers,
+      cache: init.cache ?? 'no-store',
+      signal: init.signal ?? graphTimeoutSignal(),
+    });
+    if (response.status !== 401 || attempt === 1) return response;
+    const next = await refreshBoundOneDriveAccessToken(token);
+    if (!next || next === token) return response;
+    token = next;
+  }
+  throw new Error('fetchMicrosoftGraph: unreachable');
+}
+
 export function normalizeOneDrivePath(rawPath: string): string {
   const trimmed = rawPath.trim().replace(/\\/g, '/');
   if (!trimmed) return '/';
@@ -47,11 +76,8 @@ export async function oneDriveGraphJsonRequest<T>(
   resourcePath: string,
   options: GraphRequestOptions = {},
 ): Promise<T | null> {
-  const response = await fetch(graphEndpoint(resourcePath), {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: 'application/json',
-    },
+  const response = await fetchMicrosoftGraph(accessToken, graphEndpoint(resourcePath), {
+    headers: { Accept: 'application/json' },
     cache: 'no-store',
     signal: graphTimeoutSignal(),
   });
@@ -80,8 +106,7 @@ export async function oneDriveGraphDownloadFile(
   resourcePath: string,
   options: GraphRequestOptions = {},
 ): Promise<Buffer | null> {
-  const response = await fetch(graphEndpoint(resourcePath), {
-    headers: { Authorization: `Bearer ${accessToken}` },
+  const response = await fetchMicrosoftGraph(accessToken, graphEndpoint(resourcePath), {
     cache: 'no-store',
     signal: graphTimeoutSignal(),
   });
