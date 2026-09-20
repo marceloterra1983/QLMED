@@ -47,10 +47,13 @@ export const prisma = new Proxy({} as PrismaClient, {
 // Kick off background services (auto-sync, local-xml-sync) once on the server.
 // The dynamic import avoids circular dependencies: bootstrap.ts imports prisma from
 // this module, but by the time it resolves the `prisma` export is already available.
+// NEXT_PHASE=phase-production-build cobre o `next build` (Collecting page data).
+// Com DATABASE_URL no CI isso disparava 8+ rotinas no runner de 3 GB → exit 137.
 if (
   typeof window === 'undefined' &&
   process.env.DATABASE_URL &&
-  process.env.QLMED_DISABLE_BACKGROUND_SERVICES !== 'true'
+  process.env.QLMED_DISABLE_BACKGROUND_SERVICES !== 'true' &&
+  process.env.NEXT_PHASE !== 'phase-production-build'
 ) {
   import('./bootstrap').catch((err) =>
     log.error({ err }, 'Falha ao iniciar servicos'),

@@ -150,6 +150,7 @@ jobs:
       DATABASE_URL: postgresql://qlmed_ci:qlmed_ci@qlmed-ci-db:5432/qlmed_ci?schema=public
       NEXTAUTH_SECRET: ci-only-secret
       NEXTAUTH_URL: http://127.0.0.1:3000
+      QLMED_DISABLE_BACKGROUND_SERVICES: 'true'
 
     steps:
       - name: Checkout
