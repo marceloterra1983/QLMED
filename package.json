@@ -49,18 +49,18 @@
     "next": "15.5.25",
     "next-auth": "4.24.15",
     "node-forge": "^1.4.0",
-    "nodemailer": "^10.0.3",
+    "nodemailer": "^10.0.10",
     "pg": "^8.23.0",
     "pino": "^10.3.1",
     "prisma": "7.10.0",
-    "puppeteer-core": "^25.10.0",
+    "puppeteer-core": "^25.11.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "sharp": "^0.35.4",
     "sonner": "^2.0.8",
     "web-push": "^3.6.7",
     "xml2js": "^0.6.2",
-    "zod": "^4.6.2"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.7",
