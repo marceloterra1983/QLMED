@@ -7,6 +7,7 @@ import {
   resolvePanelPagePath,
   VALID_PAGE_PATHS,
 } from '../navigation';
+import { config as middlewareConfig } from '@/middleware';
 
 describe('SPEC-085 — ACL de /orcamentos', () => {
   it('a página é válida e o painel resolve para ela', () => {
@@ -31,6 +32,10 @@ describe('SPEC-085 — ACL de /orcamentos', () => {
     expect(canAccessPage('viewer', ['/orcamentos'], '/orcamentos')).toBe(true);
     expect(canAccessApi('viewer', ['/orcamentos'], '/api/orcamentos/x/pdf')).toBe(true);
     expect(canAccessPage('admin', [], '/orcamentos')).toBe(true);
+  });
+
+  it('o middleware exige sessão em /orcamentos', () => {
+    expect(middlewareConfig.matcher).toEqual(expect.arrayContaining(['/orcamentos/:path*']));
   });
 
   it('Orçamentos não abre o admin de produtos nem a ficha de clientes', () => {

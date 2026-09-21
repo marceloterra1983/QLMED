@@ -20,8 +20,7 @@ export async function GET(req: Request, ctx: Ctx) {
     }
     const company = await getOrCreateSingleCompany(userId);
     const { id } = await ctx.params;
-    const quoted = await markQuoteIssued(company.id, id);
-    const quote = quoted ?? (await getQuote(company.id, id));
+    const quote = await getQuote(company.id, id);
     if (!quote) return NextResponse.json({ error: 'Orçamento não encontrado' }, { status: 404 });
 
     const cnpj = company.cnpj.replace(/\D/g, '');
@@ -57,6 +56,10 @@ export async function GET(req: Request, ctx: Ctx) {
         { error: missingChrome ? 'Geração de PDF indisponível neste ambiente' : 'Falha ao gerar PDF' },
         { status: 503 },
       );
+    }
+
+    if (quote.status === 'draft') {
+      await markQuoteIssued(company.id, id);
     }
 
     const download = new URL(req.url).searchParams.get('download') === '1';

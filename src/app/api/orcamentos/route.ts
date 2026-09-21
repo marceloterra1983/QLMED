@@ -44,7 +44,7 @@ export async function POST(req: Request) {
       const quote = await createQuote(company.id, userId, parsed.data);
       return NextResponse.json(quote, { status: 201 });
     } catch (error) {
-      if (error instanceof Error && /Quantidade|Desconto|Frete|item|CNPJ|número|Preço/i.test(error.message)) {
+      if (error instanceof Error && /Quantidade|Desconto|Frete|item|CNPJ|número|Preço|Produto/i.test(error.message)) {
         return NextResponse.json({ error: error.message }, { status: 400 });
       }
       throw error;
