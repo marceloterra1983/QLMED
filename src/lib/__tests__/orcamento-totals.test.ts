@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatQuoteNumber, lineTotalOf, quoteTotalsOf } from '../orcamentos/totals';
+import { formatQuoteNumber, lineTotalOf, quoteTotalsOf, todayYmd } from '../orcamentos/totals';
 
 describe('SPEC-085 — totais Decimal do orçamento', () => {
   it('1 UN a 3800.00 sem desconto e frete 0 totaliza 3800.00', () => {
@@ -31,5 +31,10 @@ describe('SPEC-085 — totais Decimal do orçamento', () => {
   it('formata o número com 8 dígitos', () => {
     expect(formatQuoteNumber(8318)).toBe('00008318');
     expect(() => formatQuoteNumber(0)).toThrow();
+  });
+
+  it('todayYmd devolve YYYY-MM-DD civil em America/Sao_Paulo', () => {
+    expect(todayYmd(new Date('2026-09-21T02:30:00.000Z'))).toBe('2026-09-20');
+    expect(todayYmd(new Date('2026-09-21T12:00:00.000Z'))).toBe('2026-09-21');
   });
 });

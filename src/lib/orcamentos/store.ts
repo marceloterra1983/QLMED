@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 import type { QuoteStatus } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import type { QuoteUpsertInput } from '@/lib/schemas/orcamentos';
-import { formatQuoteNumber, moneyText, quoteTotalsOf } from './totals';
+import { formatQuoteNumber, moneyText, quoteTotalsOf, todayYmd } from './totals';
 
 function digits(value: string): string {
   return value.replace(/\D/g, '');
@@ -11,16 +11,6 @@ function digits(value: string): string {
 function emptyToNull(value: string | null | undefined): string | null {
   const trimmed = (value || '').trim();
   return trimmed ? trimmed : null;
-}
-
-function todayYmd(now = new Date()): string {
-  const fmt = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-  return fmt.format(now);
 }
 
 export function serializeQuote(row: {

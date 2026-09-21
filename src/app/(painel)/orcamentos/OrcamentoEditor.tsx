@@ -7,11 +7,12 @@ import PageHeader from '@/components/PageHeader';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import Field, { FIELD_CONTROL_CLS } from '@/components/ui/Field';
+import Section from '@/components/ui/Section';
 import Spinner from '@/components/ui/Spinner';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useRole } from '@/hooks/useRole';
 import { formatCurrency } from '@/lib/utils';
-import { quoteTotalsOf } from '@/lib/orcamentos/totals';
+import { moneyText, quoteTotalsOf, todayYmd } from '@/lib/orcamentos/totals';
 
 type ClienteHit = {
   cnpj: string;
@@ -72,16 +73,6 @@ type QuotePayload = {
   freight: string;
   items: Array<Omit<Line, 'key'> & { id?: string }>;
 };
-
-function todayYmd(): string {
-  const fmt = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-  return fmt.format(new Date());
-}
 
 function blankLine(): Line {
   return {
@@ -224,7 +215,7 @@ export default function OrcamentoEditor({ quoteId }: { quoteId?: string }) {
         lines.map((l) => ({ quantity: l.quantity || '0', unitPrice: l.unitPrice || '0', discount: l.discount || '0' })),
         form.freight || '0',
       );
-      return { subtotal: t.subtotal.toFixed(2), total: t.total.toFixed(2) };
+      return { subtotal: moneyText(t.subtotal), total: moneyText(t.total) };
     } catch {
       return { subtotal: '—', total: '—' };
     }
@@ -344,8 +335,8 @@ export default function OrcamentoEditor({ quoteId }: { quoteId?: string }) {
       />
 
       <section className="grid gap-4 md:grid-cols-2">
-        <div className="space-y-3 rounded-xl border border-slate-200 dark:border-slate-800 p-4 bg-white dark:bg-card-dark">
-          <h3 className="font-bold text-slate-800 dark:text-slate-100">Cliente</h3>
+        <Section icon="person" title="Cliente">
+          <div className="space-y-3">
           {!locked ? (
             <Field label="Buscar cliente">
               <input
@@ -404,10 +395,11 @@ export default function OrcamentoEditor({ quoteId }: { quoteId?: string }) {
               onChange={(e) => setForm((p) => ({ ...p, salesperson: e.target.value }))}
             />
           </Field>
-        </div>
+          </div>
+        </Section>
 
-        <div className="space-y-3 rounded-xl border border-slate-200 dark:border-slate-800 p-4 bg-white dark:bg-card-dark">
-          <h3 className="font-bold text-slate-800 dark:text-slate-100">Paciente e convênio</h3>
+        <Section icon="medical_services" title="Paciente e convênio">
+          <div className="space-y-3">
           <Field label="Paciente">
             <input className={FIELD_CONTROL_CLS} value={form.patientName || ''} disabled={locked} onChange={(e) => setForm((p) => ({ ...p, patientName: e.target.value }))} />
           </Field>
@@ -420,10 +412,12 @@ export default function OrcamentoEditor({ quoteId }: { quoteId?: string }) {
           <Field label="Local">
             <input className={FIELD_CONTROL_CLS} value={form.local || ''} disabled={locked} onChange={(e) => setForm((p) => ({ ...p, local: e.target.value }))} />
           </Field>
-        </div>
+          </div>
+        </Section>
       </section>
 
-      <section className="rounded-xl border border-slate-200 dark:border-slate-800 p-4 bg-white dark:bg-card-dark space-y-3">
+      <Section icon="inventory_2" title="Itens">
+        <div className="space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-end gap-3">
           <Field label="Adicionar produto" className="flex-1">
             <input
@@ -492,19 +486,19 @@ export default function OrcamentoEditor({ quoteId }: { quoteId?: string }) {
               {lines.map((line) => (
                 <tr key={line.key} className="border-t border-slate-100 dark:border-slate-800">
                   <td className="py-2 pr-2 w-28">
-                    <input className={FIELD_CONTROL_CLS} value={line.code} disabled={locked} onChange={(e) => setLines((rows) => rows.map((r) => (r.key === line.key ? { ...r, code: e.target.value } : r)))} />
+                    <input aria-label="Código do item" className={FIELD_CONTROL_CLS} value={line.code} disabled={locked} onChange={(e) => setLines((rows) => rows.map((r) => (r.key === line.key ? { ...r, code: e.target.value } : r)))} />
                   </td>
                   <td className="py-2 pr-2">
-                    <input className={FIELD_CONTROL_CLS} value={line.description} disabled={locked} onChange={(e) => setLines((rows) => rows.map((r) => (r.key === line.key ? { ...r, description: e.target.value } : r)))} />
+                    <input aria-label="Descrição do item" className={FIELD_CONTROL_CLS} value={line.description} disabled={locked} onChange={(e) => setLines((rows) => rows.map((r) => (r.key === line.key ? { ...r, description: e.target.value } : r)))} />
                   </td>
                   <td className="py-2 pr-2 w-24">
-                    <input className={FIELD_CONTROL_CLS} value={line.quantity} disabled={locked} onChange={(e) => setLines((rows) => rows.map((r) => (r.key === line.key ? { ...r, quantity: e.target.value } : r)))} />
+                    <input aria-label="Quantidade" className={FIELD_CONTROL_CLS} value={line.quantity} disabled={locked} onChange={(e) => setLines((rows) => rows.map((r) => (r.key === line.key ? { ...r, quantity: e.target.value } : r)))} />
                   </td>
                   <td className="py-2 pr-2 w-28">
-                    <input className={FIELD_CONTROL_CLS} value={line.unitPrice} disabled={locked} onChange={(e) => setLines((rows) => rows.map((r) => (r.key === line.key ? { ...r, unitPrice: e.target.value } : r)))} />
+                    <input aria-label="Preço unitário" className={FIELD_CONTROL_CLS} value={line.unitPrice} disabled={locked} onChange={(e) => setLines((rows) => rows.map((r) => (r.key === line.key ? { ...r, unitPrice: e.target.value } : r)))} />
                   </td>
                   <td className="py-2 pr-2 w-24">
-                    <input className={FIELD_CONTROL_CLS} value={line.discount} disabled={locked} onChange={(e) => setLines((rows) => rows.map((r) => (r.key === line.key ? { ...r, discount: e.target.value } : r)))} />
+                    <input aria-label="Desconto" className={FIELD_CONTROL_CLS} value={line.discount} disabled={locked} onChange={(e) => setLines((rows) => rows.map((r) => (r.key === line.key ? { ...r, discount: e.target.value } : r)))} />
                   </td>
                   <td className="py-2">
                     {!locked ? (
@@ -537,7 +531,8 @@ export default function OrcamentoEditor({ quoteId }: { quoteId?: string }) {
             <p className="text-lg font-bold">Total {totals.total === '—' ? '—' : formatCurrency(Number(totals.total))}</p>
           </div>
         </div>
-      </section>
+        </div>
+      </Section>
 
       <ConfirmDialog
         isOpen={cancelOpen}

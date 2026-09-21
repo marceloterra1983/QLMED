@@ -7,13 +7,14 @@ import { toast } from 'sonner';
 import PageHeader from '@/components/PageHeader';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
+import Card from '@/components/ui/Card';
 import EmptyState from '@/components/ui/EmptyState';
 import Spinner from '@/components/ui/Spinner';
 import ListPagination from '@/components/ui/ListPagination';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { RowActionsBase } from '@/components/ui/RowActions';
 import { useRole } from '@/hooks/useRole';
-import { FILTER_INPUT_CLS, formatCurrency } from '@/lib/utils';
+import { FILTER_INPUT_CLS, formatCurrency, formatDocumentDate } from '@/lib/utils';
 
 type QuoteRow = {
   id: string;
@@ -35,11 +36,6 @@ const STATUS_TONE: Record<QuoteRow['status'], 'neutral' | 'success' | 'danger'> 
   issued: 'success',
   cancelled: 'danger',
 };
-
-function formatDate(iso: string): string {
-  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
-}
 
 export default function OrcamentosPageClient() {
   const router = useRouter();
@@ -131,6 +127,7 @@ export default function OrcamentosPageClient() {
         <input
           className={`${FILTER_INPUT_CLS} sm:max-w-sm`}
           placeholder="Buscar número ou cliente"
+          aria-label="Buscar orçamento por número ou cliente"
           value={q}
           onChange={(e) => {
             setPage(1);
@@ -139,6 +136,7 @@ export default function OrcamentosPageClient() {
         />
         <select
           className={`${FILTER_INPUT_CLS} sm:w-48`}
+          aria-label="Filtrar por situação"
           value={status}
           onChange={(e) => {
             setPage(1);
@@ -163,7 +161,7 @@ export default function OrcamentosPageClient() {
           hint="Crie o primeiro orçamento com um cliente e os produtos do catálogo."
         />
       ) : (
-        <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-card-dark">
+        <Card padding="none" className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs uppercase tracking-wide text-slate-500 border-b border-slate-200 dark:border-slate-800">
@@ -179,11 +177,11 @@ export default function OrcamentosPageClient() {
               {rows.map((row) => (
                 <tr key={row.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
                   <td className="px-4 py-3 font-semibold">
-                    <Link href={`/orcamentos/${row.id}`} className="text-primary hover:underline">
+                    <Link href={`/orcamentos/${row.id}`} className="text-primary dark:text-blue-400 hover:underline">
                       {row.numberLabel}
                     </Link>
                   </td>
-                  <td className="px-4 py-3">{formatDate(row.issuedAt)}</td>
+                  <td className="px-4 py-3">{formatDocumentDate(row.issuedAt)}</td>
                   <td className="px-4 py-3">{row.customerName}</td>
                   <td className="px-4 py-3 text-right font-medium">{formatCurrency(Number(row.total))}</td>
                   <td className="px-4 py-3">
@@ -212,7 +210,7 @@ export default function OrcamentosPageClient() {
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
 
       <ListPagination page={page} pages={pages} loading={loading} onPageChange={setPage} />

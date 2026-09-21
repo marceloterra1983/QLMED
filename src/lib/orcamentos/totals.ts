@@ -68,3 +68,14 @@ export function formatQuoteNumber(number: number): string {
 export function moneyText(value: { toString(): string } | string | number): string {
   return new Decimal(String(value)).toDecimalPlaces(MONEY, HALF_UP).toFixed(MONEY);
 }
+
+/** Data civil `YYYY-MM-DD` em America/Sao_Paulo — valor do campo Data do orçamento. */
+export function todayYmd(now = new Date()): string {
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  return fmt.format(now);
+}
