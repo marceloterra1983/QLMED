@@ -11,7 +11,7 @@ import Section from '@/components/ui/Section';
 import Spinner from '@/components/ui/Spinner';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useRole } from '@/hooks/useRole';
-import { formatCurrency } from '@/lib/utils';
+import { createClientRowId, formatCurrency } from '@/lib/utils';
 import { moneyText, quoteTotalsOf, todayYmd } from '@/lib/orcamentos/totals';
 
 type ClienteHit = {
@@ -76,7 +76,7 @@ type QuotePayload = {
 
 function blankLine(): Line {
   return {
-    key: crypto.randomUUID(),
+    key: createClientRowId(),
     productRegistryId: null,
     code: '',
     description: '',
@@ -159,7 +159,7 @@ export default function OrcamentoEditor({ quoteId }: { quoteId?: string }) {
       setForm(quote);
       setLines(
         quote.items.map((item) => ({
-          key: item.id || crypto.randomUUID(),
+          key: item.id || createClientRowId(),
           productRegistryId: item.productRegistryId ?? null,
           code: item.code,
           description: item.description,
@@ -444,7 +444,7 @@ export default function OrcamentoEditor({ quoteId }: { quoteId?: string }) {
                     setLines((prev) => [
                       ...prev,
                       {
-                        key: crypto.randomUUID(),
+                        key: createClientRowId(),
                         productRegistryId: p.id,
                         code: p.code,
                         description: p.description,

@@ -37,4 +37,34 @@ describe('SPEC-085 — página Orçamentos', () => {
       expect(screen.getByText('Nenhum orçamento')).toBeTruthy();
     });
   });
+
+  it('lista orçamento histórico no card e na tabela com origem', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          quotes: [
+            {
+              id: 'arc1',
+              numberLabel: '00008318',
+              issuedAt: '2026-09-15',
+              status: 'issued',
+              customerName: 'IASEMT',
+              total: '3800.00',
+              patientName: 'LUIZ CARLOS DE ALMEIDA',
+              origin: 'email',
+            },
+          ],
+          pagination: { page: 1, limit: 50, total: 1, pages: 1 },
+        }),
+      }),
+    );
+    render(<OrcamentosPageClient />);
+    await waitFor(() => {
+      expect(screen.getAllByText('00008318').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('LUIZ CARLOS DE ALMEIDA').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('E-mail').length).toBeGreaterThan(0);
+    });
+  });
 });

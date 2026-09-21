@@ -174,6 +174,18 @@ export function formatDateShort(value: string | null | undefined): string {
   return Number.isNaN(d.getTime()) ? '-' : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
+/**
+ * Id de linha no cliente. `crypto.randomUUID` só existe em contexto seguro
+ * (HTTPS/localhost); o preview Tailscale é HTTP e o editor crashava ao
+ * adicionar linha avulsa.
+ */
+export function createClientRowId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `k-${Date.now().toString(36)}-${Math.random().toString(16).slice(2)}`;
+}
+
 /** Tamanho de ficheiro ("840 B", "12,3 KB", "1,2 MB"). */
 export function formatFileSize(bytes: number): string {
   const unidades = ['B', 'KB', 'MB', 'GB'];
