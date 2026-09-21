@@ -202,6 +202,8 @@ model Company {
   nfeItemProductLinks   NfeItemProductLink[]
   productSettings       ProductSettingsCatalog[]
   cnpjMonitorings       CnpjMonitoring[]
+  quotes                Quote[]
+  quoteItems            QuoteItem[]
   createdAt             DateTime                               @default(now())
   updatedAt             DateTime                               @updatedAt
 
@@ -773,6 +775,7 @@ model ProductRegistry {
   aggComputedAt             DateTime? @map("agg_computed_at") @db.Timestamptz
   aggSearchText             String?   @map("agg_search_text")
   nfeItemLinks              NfeItemProductLink[]
+  quoteItems                QuoteItem[]
   createdAt                 DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt                 DateTime  @default(now()) @map("updated_at") @db.Timestamptz
 
@@ -1646,4 +1649,73 @@ model InvoiceEmission {
   @@unique([companyId, series, number])
   @@index([companyId, status])
   @@index([companyId, destCnpj])
+}
+
+enum QuoteStatus {
+  draft
+  issued
+  cancelled
+}
+
+/// Orçamento comercial (SPEC-085). Não é documento fiscal e não baixa estoque.
+model Quote {
+  id                String      @id @default(cuid())
+  companyId         String      @map("company_id")
+  company           Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  number            Int
+  issuedAt          DateTime    @map("issued_at") @db.Date
+  status            QuoteStatus @default(draft)
+  customerCnpj      String      @map("customer_cnpj")
+  customerName      String      @map("customer_name")
+  customerIe        String?     @map("customer_ie")
+  customerCode      String?     @map("customer_code")
+  customerStreet    String?     @map("customer_street")
+  customerNumber    String?     @map("customer_number")
+  customerDistrict  String?     @map("customer_district")
+  customerCity      String?     @map("customer_city")
+  customerState     String?     @map("customer_state")
+  customerZip       String?     @map("customer_zip")
+  salesperson       String?
+  patientName       String?     @map("patient_name")
+  doctorName        String?     @map("doctor_name")
+  convenio          String?
+  local             String?
+  notes             String?
+  freight           Decimal     @default(0) @db.Decimal(14, 2)
+  subtotal          Decimal     @db.Decimal(14, 2)
+  total             Decimal     @db.Decimal(14, 2)
+  createdByUserId   String      @map("created_by_user_id")
+  items             QuoteItem[]
+  createdAt         DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([companyId, number])
+  @@index([companyId, issuedAt(sort: Desc)])
+  @@index([companyId, status])
+  @@index([companyId, customerCnpj])
+  @@map("quote")
+}
+
+model QuoteItem {
+  id                String           @id @default(cuid())
+  quoteId           String           @map("quote_id")
+  quote             Quote            @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  companyId         String           @map("company_id")
+  company           Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  lineNumber        Int              @map("line_number")
+  productRegistryId String?          @map("product_registry_id")
+  productRegistry   ProductRegistry? @relation(fields: [productRegistryId], references: [id], onDelete: SetNull)
+  code              String
+  description       String
+  rvs               String?
+  ncm               String?
+  unit              String?
+  quantity          Decimal          @db.Decimal(12, 4)
+  unitPrice         Decimal          @map("unit_price") @db.Decimal(14, 2)
+  discount          Decimal          @default(0) @db.Decimal(14, 2)
+  lineTotal         Decimal          @map("line_total") @db.Decimal(14, 2)
+
+  @@unique([quoteId, lineNumber])
+  @@index([companyId])
+  @@map("quote_item")
 }

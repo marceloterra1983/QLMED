@@ -10,6 +10,12 @@ export interface PageGroup {
 
 export const PAGE_GROUPS: PageGroup[] = [
   {
+    section: 'Comercial',
+    pages: [
+      { label: 'Orçamentos', path: '/orcamentos' },
+    ],
+  },
+  {
     section: 'Cadastros',
     pages: [
       { label: 'Produtos', path: '/cadastro/produtos' },
@@ -103,6 +109,7 @@ const API_PREFIX_TO_PAGES: Array<{ prefix: string; pages: string[] }> = [
   { prefix: '/api/contacts',  pages: ['/cadastro/fornecedores', '/cadastro/clientes'] },
   { prefix: '/api/cnpj',      pages: ['/cadastro/fornecedores', '/cadastro/clientes', '/cadastro/produtos'] },
   { prefix: '/api/documentos', pages: ['/cadastro/documentos'] },
+  { prefix: '/api/orcamentos', pages: ['/orcamentos'] },
   { prefix: '/api/companies', pages: ['/sistema/settings'] },
   // Estoque
   { prefix: '/api/estoque',   pages: ['/estoque/controle', '/estoque/entrada-nfe', '/estoque/saida-material'] },
