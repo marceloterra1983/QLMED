@@ -61,7 +61,15 @@ assert.ok(
   gate.EXPECTED_MIGRATIONS.some((m) => m.name === '20260905220000_nfe_item_product_link'),
   'SPEC-047 nfe_item_product_link deve estar pinada',
 );
-assert.equal(gate.EXPECTED_MIGRATION, '20260921120000_quote');
+assert.equal(gate.EXPECTED_MIGRATION, '20260921153000_quote_archive');
+assert.ok(
+  gate.EXPECTED_MIGRATIONS.some((m) => m.name === '20260921120000_quote'),
+  'pin inclui quote (SPEC-085)',
+);
+assert.ok(
+  gate.EXPECTED_MIGRATIONS.some((m) => m.name === '20260921153000_quote_archive'),
+  'pin inclui quote_archive (SPEC-086)',
+);
 assert.ok(
   gate.EXPECTED_MIGRATIONS.some((m) => m.name === '20260906180000_unimed_cg_billing_match'),
   'SPEC-051 billing match migration must be pinned',

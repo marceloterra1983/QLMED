@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -36,5 +36,39 @@ describe('SPEC-085 — página Orçamentos', () => {
     await waitFor(() => {
       expect(screen.getByText('Nenhum orçamento')).toBeTruthy();
     });
+  });
+
+  it('lista orçamento histórico no card e na tabela com origem', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          quotes: [
+            {
+              id: 'arc1',
+              numberLabel: '00008318',
+              issuedAt: '2026-09-15',
+              status: 'issued',
+              customerName: 'IASEMT',
+              total: '3800.00',
+              patientName: 'LUIZ CARLOS DE ALMEIDA',
+              origin: 'email',
+            },
+          ],
+          pagination: { page: 1, limit: 50, total: 1, pages: 1 },
+        }),
+      }),
+    );
+    render(<OrcamentosPageClient />);
+    await waitFor(() => {
+      expect(screen.getAllByText('00008318').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('LUIZ CARLOS DE ALMEIDA').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('E-mail').length).toBeGreaterThan(0);
+    });
+    const open = vi.fn();
+    vi.stubGlobal('open', open);
+    fireEvent.click(screen.getAllByText('IASEMT')[0]!);
+    expect(open).toHaveBeenCalledWith('/api/orcamentos/arquivo/arc1/pdf', '_blank');
   });
 });

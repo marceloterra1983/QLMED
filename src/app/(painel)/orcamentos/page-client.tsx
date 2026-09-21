@@ -23,6 +23,17 @@ type QuoteRow = {
   status: 'draft' | 'issued' | 'cancelled';
   customerName: string;
   total: string;
+  patientName?: string | null;
+  convenio?: string | null;
+  salesperson?: string | null;
+  origin?: 'qlmed' | 'email' | 'arquivo';
+  itemCount?: number;
+};
+
+const ORIGIN_LABEL: Record<NonNullable<QuoteRow['origin']>, string> = {
+  qlmed: 'QLMED',
+  email: 'E-mail',
+  arquivo: 'Arquivo',
 };
 
 const STATUS_LABEL: Record<QuoteRow['status'], string> = {
@@ -48,6 +59,7 @@ export default function OrcamentosPageClient() {
   const [pages, setPages] = useState(1);
   const [cancelId, setCancelId] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const query = useMemo(() => {
     const params = new URLSearchParams();
@@ -108,6 +120,25 @@ export default function OrcamentosPageClient() {
     }
   }
 
+  async function importarHistorico() {
+    setImporting(true);
+    try {
+      const res = await fetch('/api/orcamentos/arquivo/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: 'all' }),
+      });
+      if (!res.ok) {
+        toast.error('Não foi possível importar o arquivo histórico');
+        return;
+      }
+      toast.success('Arquivo histórico importado');
+      await load();
+    } finally {
+      setImporting(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -116,9 +147,14 @@ export default function OrcamentosPageClient() {
         subtitle="Monte propostas com clientes e produtos do cadastro"
         actions={
           canWrite ? (
-            <Button href="/orcamentos/novo" icon="add">
-              Novo orçamento
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" icon="sync" onClick={() => void importarHistorico()} disabled={importing}>
+                {importing ? 'Importando…' : 'Importar histórico'}
+              </Button>
+              <Button href="/orcamentos/novo" icon="add">
+                Novo orçamento
+              </Button>
+            </div>
           ) : null
         }
       />
@@ -161,56 +197,110 @@ export default function OrcamentosPageClient() {
           hint="Crie o primeiro orçamento com um cliente e os produtos do catálogo."
         />
       ) : (
-        <Card padding="none" className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-slate-500 border-b border-slate-200 dark:border-slate-800">
-                <th className="px-4 py-3">Número</th>
-                <th className="px-4 py-3">Data</th>
-                <th className="px-4 py-3">Cliente</th>
-                <th className="px-4 py-3 text-right">Total</th>
-                <th className="px-4 py-3">Situação</th>
-                <th className="px-4 py-3 text-center">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
-                  <td className="px-4 py-3 font-semibold">
-                    <Link href={`/orcamentos/${row.id}`} className="text-primary dark:text-blue-400 hover:underline">
-                      {row.numberLabel}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">{formatDocumentDate(row.issuedAt)}</td>
-                  <td className="px-4 py-3">{row.customerName}</td>
-                  <td className="px-4 py-3 text-right font-medium">{formatCurrency(Number(row.total))}</td>
-                  <td className="px-4 py-3">
+        <>
+          <div className="sm:hidden space-y-2">
+            {rows.map((row) => (
+              <Card
+                key={row.id}
+                padding="sm"
+                className="cursor-pointer"
+                onClick={() => {
+                  if (row.origin && row.origin !== 'qlmed') {
+                    window.open(`/api/orcamentos/arquivo/${row.id}/pdf`, '_blank');
+                    return;
+                  }
+                  router.push(`/orcamentos/${row.id}`);
+                }}
+              >
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="text-sm font-bold text-slate-900 dark:text-white">{row.numberLabel}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">{formatDocumentDate(row.issuedAt)}</span>
+                </div>
+                <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{row.customerName}</p>
+                {row.patientName ? (
+                  <p className="text-xs text-slate-600 dark:text-slate-300 truncate">
+                    <span className="font-semibold text-slate-500">Paciente:</span> {row.patientName}
+                  </p>
+                ) : null}
+                {row.convenio ? <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{row.convenio}</p> : null}
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <span className="text-sm font-bold font-mono">{formatCurrency(Number(row.total))}</span>
+                  <div className="flex items-center gap-1">
+                    {row.origin && row.origin !== 'qlmed' ? (
+                      <Badge tone="neutral">{ORIGIN_LABEL[row.origin]}</Badge>
+                    ) : null}
                     <Badge tone={STATUS_TONE[row.status]}>{STATUS_LABEL[row.status]}</Badge>
-                  </td>
-                  <td className="px-4 py-3">
-                    <RowActionsBase
-                      compact
-                      inline={[
-                        { label: 'Abrir', icon: 'edit', onSelect: () => router.push(`/orcamentos/${row.id}`) },
-                        { label: 'PDF', icon: 'picture_as_pdf', onSelect: () => window.open(`/api/orcamentos/${row.id}/pdf`, '_blank') },
-                      ]}
-                      menu={[
-                        ...(canWrite
-                          ? [
-                              { label: 'Duplicar', icon: 'content_copy', onSelect: () => void duplicar(row.id) },
-                              ...(row.status !== 'cancelled'
-                                ? [{ label: 'Cancelar', icon: 'cancel', danger: true, onSelect: () => setCancelId(row.id) }]
-                                : []),
-                            ]
-                          : []),
-                      ]}
-                    />
-                  </td>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          <Card padding="none" className="overflow-x-auto hidden sm:block">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wide text-slate-500 border-b border-slate-200 dark:border-slate-800">
+                  <th className="px-4 py-3">Número</th>
+                  <th className="px-4 py-3">Data</th>
+                  <th className="px-4 py-3">Cliente</th>
+                  <th className="px-4 py-3">Paciente</th>
+                  <th className="px-4 py-3 text-right">Total</th>
+                  <th className="px-4 py-3">Origem</th>
+                  <th className="px-4 py-3">Situação</th>
+                  <th className="px-4 py-3 text-center">Ações</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
+                    <td className="px-4 py-3 font-semibold">
+                      {row.origin && row.origin !== 'qlmed' ? (
+                        <span>{row.numberLabel}</span>
+                      ) : (
+                        <Link href={`/orcamentos/${row.id}`} className="text-primary dark:text-blue-400 hover:underline">
+                          {row.numberLabel}
+                        </Link>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">{formatDocumentDate(row.issuedAt)}</td>
+                    <td className="px-4 py-3">{row.customerName}</td>
+                    <td className="px-4 py-3">{row.patientName || '—'}</td>
+                    <td className="px-4 py-3 text-right font-medium">{formatCurrency(Number(row.total))}</td>
+                    <td className="px-4 py-3">
+                      <Badge tone="neutral">{ORIGIN_LABEL[row.origin || 'qlmed']}</Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge tone={STATUS_TONE[row.status]}>{STATUS_LABEL[row.status]}</Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      <RowActionsBase
+                        compact
+                        inline={[
+                          ...(row.origin && row.origin !== 'qlmed'
+                            ? [{ label: 'PDF', icon: 'picture_as_pdf', onSelect: () => window.open(`/api/orcamentos/arquivo/${row.id}/pdf`, '_blank') }]
+                            : [
+                                { label: 'Abrir', icon: 'edit', onSelect: () => router.push(`/orcamentos/${row.id}`) },
+                                { label: 'PDF', icon: 'picture_as_pdf', onSelect: () => window.open(`/api/orcamentos/${row.id}/pdf`, '_blank') },
+                              ]),
+                        ]}
+                        menu={[
+                          ...(canWrite && (!row.origin || row.origin === 'qlmed')
+                            ? [
+                                { label: 'Duplicar', icon: 'content_copy', onSelect: () => void duplicar(row.id) },
+                                ...(row.status !== 'cancelled'
+                                  ? [{ label: 'Cancelar', icon: 'cancel', danger: true, onSelect: () => setCancelId(row.id) }]
+                                  : []),
+                              ]
+                            : []),
+                        ]}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        </>
       )}
 
       <ListPagination page={page} pages={pages} loading={loading} onPageChange={setPage} />

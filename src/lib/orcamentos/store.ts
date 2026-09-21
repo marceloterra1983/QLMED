@@ -8,6 +8,7 @@ import {
   quoteWriteLockKey,
 } from '@/lib/postgres-advisory-lock';
 import { formatQuoteNumber, moneyText, quoteTotalsOf, todayYmd, unknownProductIds } from './totals';
+import { listQuoteArchives, countQuoteArchives } from './archive-store';
 
 function digits(value: string): string {
   return value.replace(/\D/g, '');
@@ -83,6 +84,7 @@ export function serializeQuote(row: {
     freight: moneyText(row.freight),
     subtotal: moneyText(row.subtotal),
     total: moneyText(row.total),
+    origin: 'qlmed' as const,
     itemCount: row._count?.items ?? row.items?.length ?? 0,
     items: (row.items || []).map((item) => ({
       id: item.id,
@@ -192,18 +194,38 @@ export async function listQuotes(
       ...(asNumber && asNumber > 0 ? [{ number: asNumber }] : []),
     ];
   }
-  const [total, rows] = await Promise.all([
+  const windowSize = query.page * query.limit;
+  const includeArchive = !query.status || query.status === 'issued';
+  const [liveTotal, archiveTotal, liveRows, archiveRows] = await Promise.all([
     prisma.quote.count({ where }),
+    includeArchive
+      ? countQuoteArchives(companyId, { q }).catch((error) => {
+          if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2021') return 0;
+          throw error;
+        })
+      : Promise.resolve(0),
     prisma.quote.findMany({
       where,
       orderBy: [{ issuedAt: 'desc' }, { number: 'desc' }],
-      skip: (query.page - 1) * query.limit,
-      take: query.limit,
+      take: windowSize,
       include: { _count: { select: { items: true } } },
     }),
+    includeArchive
+      ? listQuoteArchives(companyId, { q, take: windowSize }).catch((error) => {
+          if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2021') return [];
+          throw error;
+        })
+      : Promise.resolve([]),
   ]);
+  const merged = [...liveRows.map(serializeQuote), ...archiveRows].sort((a, b) => {
+    const byDate = (b.issuedAt || '').localeCompare(a.issuedAt || '');
+    if (byDate !== 0) return byDate;
+    return b.numberLabel.localeCompare(a.numberLabel);
+  });
+  const total = liveTotal + archiveTotal;
+  const quotes = merged.slice((query.page - 1) * query.limit, query.page * query.limit);
   return {
-    quotes: rows.map(serializeQuote),
+    quotes,
     pagination: {
       page: query.page,
       limit: query.limit,

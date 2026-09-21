@@ -22,6 +22,8 @@ describe('SPEC-085 — ACL de /orcamentos', () => {
   it('/api/orcamentos exige exatamente a página Orçamentos', () => {
     expect(requiredPagesForApi('/api/orcamentos')).toEqual(['/orcamentos']);
     expect(requiredPagesForApi('/api/orcamentos/x/pdf')).toEqual(['/orcamentos']);
+    expect(requiredPagesForApi('/api/orcamentos/arquivo/import')).toEqual(['/orcamentos']);
+    expect(requiredPagesForApi('/api/orcamentos/arquivo/x/pdf')).toEqual(['/orcamentos']);
     expect(requiredPagesForApi('/api/orcamentos/clientes')).toEqual(['/orcamentos']);
   });
 
