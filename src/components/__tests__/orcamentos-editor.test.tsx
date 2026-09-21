@@ -26,8 +26,7 @@ describe('SPEC-085 — editor Orçamentos', () => {
     const cryptoObj = globalThis.crypto as Crypto & { randomUUID?: () => string };
     const original = cryptoObj.randomUUID;
     // Preview :3002 é HTTP; o browser não expõe randomUUID.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    delete (cryptoObj as any).randomUUID;
+    Reflect.deleteProperty(cryptoObj, 'randomUUID');
 
     vi.stubGlobal(
       'fetch',
