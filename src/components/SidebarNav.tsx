@@ -14,6 +14,7 @@ import {
 } from '@/lib/sidebar-group-collapse';
 
 export const PAGE_LABELS: Record<string, { label: string; icon: string }> = {
+  '/orcamentos': { label: 'Orçamentos', icon: 'contract' },
   '/cadastro/produtos': { label: 'Produtos', icon: 'inventory_2' },
   '/cadastro/clientes': { label: 'Clientes', icon: 'group' },
   '/cadastro/fornecedores': { label: 'Fornecedores', icon: 'storefront' },
@@ -82,6 +83,7 @@ export function buildNavItems(session: Session | null, pendingCount: number): Na
     {
       section: null,
       items: [
+        { label: 'Orçamentos', icon: 'contract', href: '/orcamentos' },
         { label: 'Documentos', icon: 'verified', href: '/cadastro/documentos' },
       ],
     },

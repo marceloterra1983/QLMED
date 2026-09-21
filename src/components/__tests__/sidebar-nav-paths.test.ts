@@ -53,11 +53,12 @@ describe('SPEC-042 — as fontes de verdade do menu não podem divergir', () => 
     expect(src).toMatch(/prefetch=\{false\}/);
   });
 
-  it('Documentos aparece no topo do sidebar, acima de Cadastros', () => {
+  it('Orçamentos aparece no topo do sidebar, acima de Documentos', () => {
     const groups = buildNavItems(adminSession(), 0);
     expect(groups[0]?.section).toBeNull();
-    expect(groups[0]?.items.map((item) => item.href)).toEqual(['/cadastro/documentos']);
+    expect(groups[0]?.items.map((item) => item.href)).toEqual(['/orcamentos', '/cadastro/documentos']);
     expect(groups[1]?.section).toBe('Cadastros');
     expect(groups[1]?.items.map((item) => item.href)).not.toContain('/cadastro/documentos');
+    expect(groups[1]?.items.map((item) => item.href)).not.toContain('/orcamentos');
   });
 });

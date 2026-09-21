@@ -61,7 +61,7 @@ assert.ok(
   gate.EXPECTED_MIGRATIONS.some((m) => m.name === '20260905220000_nfe_item_product_link'),
   'SPEC-047 nfe_item_product_link deve estar pinada',
 );
-assert.equal(gate.EXPECTED_MIGRATION, '20260918120000_expand_money_float_decimal');
+assert.equal(gate.EXPECTED_MIGRATION, '20260921120000_quote');
 assert.ok(
   gate.EXPECTED_MIGRATIONS.some((m) => m.name === '20260906180000_unimed_cg_billing_match'),
   'SPEC-051 billing match migration must be pinned',
@@ -105,6 +105,10 @@ assert.ok(
 assert.ok(
   gate.EXPECTED_MIGRATIONS.some((m) => m.name === '20260918120000_expand_money_float_decimal'),
   'pin inclui expand_money_float_decimal (SPEC-004 T009)',
+);
+assert.ok(
+  gate.EXPECTED_MIGRATIONS.some((m) => m.name === '20260921120000_quote'),
+  'pin inclui quote (SPEC-085 orçamentos)',
 );
 assert.equal(gate.migrationState(['20260906150000_daily_issued_summary_send']), 'pending');
 // Controlo positivo: um nome fora da lista continua a reprovar (exit 78).

@@ -70,6 +70,10 @@ const EXPECTED_MIGRATIONS = [
     name: '20260918120000_expand_money_float_decimal',
     sha256: '6be7cbedffe776f03c7cfdc27224b31de369e088f78b39673304c4bb28f4631b',
   },
+  {
+    name: '20260921120000_quote',
+    sha256: '76312682ace3f3efecc74448f0d8156be4163a0cedfa7633ec5cebf29fbf3e1f',
+  },
 ];
 // Compatibilidade com quem ainda lê um nome só: a última da lista.
 const EXPECTED_MIGRATION = EXPECTED_MIGRATIONS[EXPECTED_MIGRATIONS.length - 1].name;
