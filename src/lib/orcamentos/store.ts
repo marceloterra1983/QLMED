@@ -2,7 +2,12 @@ import { Prisma } from '@prisma/client';
 import type { QuoteStatus } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import type { QuoteUpsertInput } from '@/lib/schemas/orcamentos';
-import { formatQuoteNumber, moneyText, quoteTotalsOf, todayYmd } from './totals';
+import {
+  acquirePostgresTransactionAdvisoryLock,
+  quoteNumberLockKey,
+  quoteWriteLockKey,
+} from '@/lib/postgres-advisory-lock';
+import { formatQuoteNumber, moneyText, quoteTotalsOf, todayYmd, unknownProductIds } from './totals';
 
 function digits(value: string): string {
   return value.replace(/\D/g, '');
@@ -145,7 +150,24 @@ function persistPayload(input: QuoteUpsertInput, companyId: string) {
   };
 }
 
+async function assertProductsOfCompany(
+  tx: Prisma.TransactionClient,
+  companyId: string,
+  items: QuoteUpsertInput['items'],
+) {
+  const requested = [...new Set(items.map((item) => item.productRegistryId).filter((id): id is string => Boolean(id)))];
+  if (requested.length === 0) return;
+  const owned = await tx.productRegistry.findMany({
+    where: { companyId, id: { in: requested } },
+    select: { id: true },
+  });
+  if (unknownProductIds(owned.map((row) => row.id), requested).length > 0) {
+    throw new Error('Produto não pertence à empresa');
+  }
+}
+
 export async function nextQuoteNumber(companyId: string, tx: Prisma.TransactionClient): Promise<number> {
+  await acquirePostgresTransactionAdvisoryLock(tx, quoteNumberLockKey(companyId));
   const last = await tx.quote.findFirst({
     where: { companyId },
     orderBy: { number: 'desc' },
@@ -202,6 +224,7 @@ export async function getQuote(companyId: string, id: string) {
 export async function createQuote(companyId: string, userId: string, input: QuoteUpsertInput) {
   const payload = persistPayload(input, companyId);
   const row = await prisma.$transaction(async (tx) => {
+    await assertProductsOfCompany(tx, companyId, input.items);
     const number = await nextQuoteNumber(companyId, tx);
     return tx.quote.create({
       data: {
@@ -217,29 +240,38 @@ export async function createQuote(companyId: string, userId: string, input: Quot
 }
 
 export async function updateQuote(companyId: string, id: string, input: QuoteUpsertInput) {
-  const existing = await prisma.quote.findFirst({ where: { id, companyId } });
-  if (!existing) return { kind: 'missing' as const };
-  if (existing.status === 'cancelled') return { kind: 'cancelled' as const };
   const payload = persistPayload(input, companyId);
-  const row = await prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx) => {
+    await acquirePostgresTransactionAdvisoryLock(tx, quoteWriteLockKey(id));
+    const existing = await tx.quote.findFirst({
+      where: { id, companyId },
+      select: { id: true, status: true },
+    });
+    if (!existing) return { kind: 'missing' as const };
+    if (existing.status === 'cancelled') return { kind: 'cancelled' as const };
+    await assertProductsOfCompany(tx, companyId, input.items);
     await tx.quoteItem.deleteMany({ where: { quoteId: id, companyId } });
-    return tx.quote.update({
+    const row = await tx.quote.update({
       where: { id },
       data: payload.data,
       include: { items: { orderBy: { lineNumber: 'asc' } } },
     });
+    return { kind: 'ok' as const, quote: serializeQuote(row) };
   });
-  return { kind: 'ok' as const, quote: serializeQuote(row) };
 }
 
 export async function cancelQuote(companyId: string, id: string) {
-  const existing = await prisma.quote.findFirst({ where: { id, companyId } });
-  if (!existing) return null;
-  if (existing.status === 'cancelled') {
-    const full = await getQuote(companyId, id);
-    return full;
-  }
-  await prisma.quote.update({ where: { id }, data: { status: 'cancelled' } });
+  const cancelled = await prisma.$transaction(async (tx) => {
+    await acquirePostgresTransactionAdvisoryLock(tx, quoteWriteLockKey(id));
+    const existing = await tx.quote.findFirst({ where: { id, companyId }, select: { id: true } });
+    if (!existing) return null;
+    await tx.quote.updateMany({
+      where: { id, companyId, status: { not: 'cancelled' } },
+      data: { status: 'cancelled' },
+    });
+    return existing.id;
+  });
+  if (!cancelled) return null;
   return getQuote(companyId, id);
 }
 
@@ -301,10 +333,12 @@ export async function duplicateQuote(companyId: string, userId: string, id: stri
 }
 
 export async function markQuoteIssued(companyId: string, id: string) {
-  const existing = await prisma.quote.findFirst({ where: { id, companyId } });
-  if (!existing) return null;
-  if (existing.status === 'draft') {
-    await prisma.quote.update({ where: { id }, data: { status: 'issued' } });
-  }
+  await prisma.$transaction(async (tx) => {
+    await acquirePostgresTransactionAdvisoryLock(tx, quoteWriteLockKey(id));
+    await tx.quote.updateMany({
+      where: { id, companyId, status: 'draft' },
+      data: { status: 'issued' },
+    });
+  });
   return getQuote(companyId, id);
 }

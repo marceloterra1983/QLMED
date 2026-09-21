@@ -50,6 +50,14 @@ export function nfeItemLinkLockKey(companyId: string): string {
   return `nfe-item-link-sweep:${companyId}`;
 }
 
+export function quoteNumberLockKey(companyId: string): string {
+  return `quote-number:${companyId}`;
+}
+
+export function quoteWriteLockKey(quoteId: string): string {
+  return `quote-write:${quoteId}`;
+}
+
 export async function acquirePostgresTransactionAdvisoryLock(
   tx: Prisma.TransactionClient,
   key: string,

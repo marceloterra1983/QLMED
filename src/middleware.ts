@@ -310,6 +310,7 @@ export const config = {
     '/gestao/:path*',
     '/relatorios/:path*',
     '/visaogeral/:path*',
+    '/orcamentos/:path*',
     // Protect ALL API routes — public ones are handled by allowlist inside middleware
     '/api/:path*',
   ],
