@@ -59,6 +59,7 @@ export default function OrcamentosPageClient() {
   const [pages, setPages] = useState(1);
   const [cancelId, setCancelId] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const query = useMemo(() => {
     const params = new URLSearchParams();
@@ -119,6 +120,25 @@ export default function OrcamentosPageClient() {
     }
   }
 
+  async function importarHistorico() {
+    setImporting(true);
+    try {
+      const res = await fetch('/api/orcamentos/arquivo/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: 'all' }),
+      });
+      if (!res.ok) {
+        toast.error('Não foi possível importar o arquivo histórico');
+        return;
+      }
+      toast.success('Arquivo histórico importado');
+      await load();
+    } finally {
+      setImporting(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -127,9 +147,14 @@ export default function OrcamentosPageClient() {
         subtitle="Monte propostas com clientes e produtos do cadastro"
         actions={
           canWrite ? (
-            <Button href="/orcamentos/novo" icon="add">
-              Novo orçamento
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" icon="sync" onClick={() => void importarHistorico()} disabled={importing}>
+                {importing ? 'Importando…' : 'Importar histórico'}
+              </Button>
+              <Button href="/orcamentos/novo" icon="add">
+                Novo orçamento
+              </Button>
+            </div>
           ) : null
         }
       />
@@ -179,7 +204,13 @@ export default function OrcamentosPageClient() {
                 key={row.id}
                 padding="sm"
                 className="cursor-pointer"
-                onClick={() => router.push(row.origin && row.origin !== 'qlmed' ? `/orcamentos?q=${encodeURIComponent(row.numberLabel)}` : `/orcamentos/${row.id}`)}
+                onClick={() => {
+                  if (row.origin && row.origin !== 'qlmed') {
+                    window.open(`/api/orcamentos/arquivo/${row.id}/pdf`, '_blank');
+                    return;
+                  }
+                  router.push(`/orcamentos/${row.id}`);
+                }}
               >
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <span className="text-sm font-bold text-slate-900 dark:text-white">{row.numberLabel}</span>

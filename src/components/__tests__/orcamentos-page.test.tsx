@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -66,5 +66,9 @@ describe('SPEC-085 — página Orçamentos', () => {
       expect(screen.getAllByText('LUIZ CARLOS DE ALMEIDA').length).toBeGreaterThan(0);
       expect(screen.getAllByText('E-mail').length).toBeGreaterThan(0);
     });
+    const open = vi.fn();
+    vi.stubGlobal('open', open);
+    fireEvent.click(screen.getAllByText('IASEMT')[0]!);
+    expect(open).toHaveBeenCalledWith('/api/orcamentos/arquivo/arc1/pdf', '_blank');
   });
 });

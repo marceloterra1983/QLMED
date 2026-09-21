@@ -50,7 +50,7 @@ export function serializeArchive(row: {
 
 export async function listQuoteArchives(
   companyId: string,
-  query: { q?: string },
+  query: { q?: string; take?: number },
 ) {
   const where: Prisma.QuoteArchiveWhereInput = { companyId };
   const q = (query.q || '').trim();
@@ -65,9 +65,24 @@ export async function listQuoteArchives(
   const rows = await prisma.quoteArchive.findMany({
     where,
     orderBy: [{ issuedAt: 'desc' }, { createdAt: 'desc' }],
+    take: query.take,
     include: { _count: { select: { items: true } } },
   });
   return rows.map(serializeArchive);
+}
+
+export async function countQuoteArchives(companyId: string, query: { q?: string }) {
+  const where: Prisma.QuoteArchiveWhereInput = { companyId };
+  const q = (query.q || '').trim();
+  if (q) {
+    where.OR = [
+      { customerName: { contains: q, mode: 'insensitive' } },
+      { patientName: { contains: q, mode: 'insensitive' } },
+      { numberLabel: { contains: q, mode: 'insensitive' } },
+      { convenio: { contains: q, mode: 'insensitive' } },
+    ];
+  }
+  return prisma.quoteArchive.count({ where });
 }
 
 export async function getQuoteArchive(companyId: string, id: string) {

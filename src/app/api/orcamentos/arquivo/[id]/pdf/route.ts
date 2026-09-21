@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { requireAuth, unauthorizedResponse } from '@/lib/auth';
 import { getOrCreateSingleCompany } from '@/lib/single-company';
 import { apiError } from '@/lib/api-error';
+import { createBufferFileResponse } from '@/lib/file-response';
 import { getQuoteArchive, isPathInsideRoot } from '@/lib/orcamentos/archive-store';
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -25,14 +26,11 @@ export async function GET(req: Request, ctx: Ctx) {
     }
     const pdf = await readFile(row.sourcePath);
     const download = new URL(req.url).searchParams.get('download') === '1';
-    const filename = path.basename(row.sourcePath);
-    return new NextResponse(pdf, {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `${download ? 'attachment' : 'inline'}; filename="${filename}"`,
-        'Cache-Control': 'private, no-store',
-      },
+    return createBufferFileResponse(pdf, {
+      fileName: path.basename(row.sourcePath),
+      contentType: 'application/pdf',
+      cacheControl: 'private, no-store',
+      dispositionType: download ? 'attachment' : 'inline',
     });
   } catch (error) {
     return apiError(error, 'orcamentos/arquivo-pdf');

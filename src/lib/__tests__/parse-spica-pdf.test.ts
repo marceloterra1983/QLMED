@@ -73,6 +73,33 @@ describe('parseQuotePdfText', () => {
     expect(parsed?.salesperson).toMatch(/FLAVIO/i);
   });
 
+  it('usa Total: quando o modelo simples não tem Valor Total', () => {
+    const parsed = parseQuotePdfText(`
+                                                                      ORÇAMENTO
+Cliente:      HOSPITAL EXEMPLO
+CNPJ:         04.311.093/0001-26
+DATA:    12/01/2022
+93.99.2447   CANULA TESTE                               BRAMSYS   80195520024    1         100,00        100,00
+Total:     100,00
+`);
+    expect(parsed?.total).toBe('100.00');
+    expect(parsed?.subtotal).toBe('100.00');
+  });
+
+  it('não grava o CNPJ da QL MED como cliente', () => {
+    const parsed = parseQuotePdfText(`
+                                         QL MED MATERIAIS HOSPITALARES LTDA
+                                         CNPJ: 07.832.309/0001-97
+                                                                                                                    ORÇAMENTO
+No. :                00000001                            Data:             19/02/2016       Cliente:   HOSPITAL SEM CNPJ                                                 Cód.:     00001
+Ítem Código                                Descrição                                                               Fabricante                      R.V.S.          Un.    Qtde.        Pr. Un.       Desc.            Total
+ 001 1                                     ITEM                                                                    X                               10407990002     UN          1      1,00                         1,00
+                                                                                                                                                                             Total:                                    1,00
+SPICA (H020_L_Orcamento_P.RPT)
+`);
+    expect(parsed?.customerCnpj).toBeNull();
+  });
+
   it('lê H020 antigo com fabricante no lugar de NCM', () => {
     const parsed = parseQuotePdfText(ALCEU);
     expect(parsed?.numberLabel).toBe('00001786');

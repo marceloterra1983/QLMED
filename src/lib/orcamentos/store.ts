@@ -8,7 +8,7 @@ import {
   quoteWriteLockKey,
 } from '@/lib/postgres-advisory-lock';
 import { formatQuoteNumber, moneyText, quoteTotalsOf, todayYmd, unknownProductIds } from './totals';
-import { listQuoteArchives } from './archive-store';
+import { listQuoteArchives, countQuoteArchives } from './archive-store';
 
 function digits(value: string): string {
   return value.replace(/\D/g, '');
@@ -194,14 +194,24 @@ export async function listQuotes(
       ...(asNumber && asNumber > 0 ? [{ number: asNumber }] : []),
     ];
   }
-  const [liveRows, archiveRows] = await Promise.all([
+  const windowSize = query.page * query.limit;
+  const includeArchive = !query.status || query.status === 'issued';
+  const [liveTotal, archiveTotal, liveRows, archiveRows] = await Promise.all([
+    prisma.quote.count({ where }),
+    includeArchive
+      ? countQuoteArchives(companyId, { q }).catch((error) => {
+          if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2021') return 0;
+          throw error;
+        })
+      : Promise.resolve(0),
     prisma.quote.findMany({
       where,
       orderBy: [{ issuedAt: 'desc' }, { number: 'desc' }],
+      take: windowSize,
       include: { _count: { select: { items: true } } },
     }),
-    !query.status || query.status === 'issued'
-      ? listQuoteArchives(companyId, { q }).catch((error) => {
+    includeArchive
+      ? listQuoteArchives(companyId, { q, take: windowSize }).catch((error) => {
           if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2021') return [];
           throw error;
         })
@@ -212,7 +222,7 @@ export async function listQuotes(
     if (byDate !== 0) return byDate;
     return b.numberLabel.localeCompare(a.numberLabel);
   });
-  const total = merged.length;
+  const total = liveTotal + archiveTotal;
   const quotes = merged.slice((query.page - 1) * query.limit, query.page * query.limit);
   return {
     quotes,

@@ -68,19 +68,27 @@ function fieldAfter(text: string, label: RegExp): string | null {
 
 const QL_MED_CNPJ = '07832309000197';
 
-function customerCnpjFrom(text: string): string | null {
-  const found = [...text.matchAll(/CNPJ\.?:\s*([\d./-]+)/gi)].map((m) => digits(m[1]));
-  return found.find((cnpj) => cnpj.length >= 11 && cnpj !== QL_MED_CNPJ) || found.find((cnpj) => cnpj.length >= 11) || null;
-}
-
-function lastMoneyLabeled(text: string, label: string): string {
+function lastMoneyLabeled(text: string, label: string): string | null {
   const re = new RegExp(`${label}\\s*:\\s*(${MONEY_RE.source})`, 'gi');
   let last: string | null = null;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
     last = parseBrMoney(m[1]);
   }
-  return last || '0.00';
+  return last;
+}
+
+function moneyLabeled(text: string, ...labels: string[]): string {
+  for (const label of labels) {
+    const value = lastMoneyLabeled(text, label);
+    if (value) return value;
+  }
+  return '0.00';
+}
+
+function customerCnpjFrom(text: string): string | null {
+  const found = [...text.matchAll(/CNPJ\.?:\s*([\d./-]+)/gi)].map((m) => digits(m[1]));
+  return found.find((cnpj) => cnpj.length >= 11 && cnpj !== QL_MED_CNPJ) || null;
 }
 
 function isQuoteDocument(text: string): boolean {
@@ -188,9 +196,9 @@ function parseH020(text: string): ParsedQuote {
     convenio,
     local,
     notes,
-    freight: lastMoneyLabeled(text, 'Frete'),
-    subtotal: lastMoneyLabeled(text, 'Sub-Total'),
-    total: lastMoneyLabeled(text, 'Total'),
+    freight: lastMoneyLabeled(text, 'Frete') || '0.00',
+    subtotal: lastMoneyLabeled(text, 'Sub-Total') || '0.00',
+    total: lastMoneyLabeled(text, 'Total') || '0.00',
     items,
     warnings,
   };
@@ -261,8 +269,8 @@ function parseSimples(text: string): ParsedQuote {
     local: null,
     notes,
     freight: '0.00',
-    subtotal: lastMoneyLabeled(text, 'Valor Total') || lastMoneyLabeled(text, 'Total'),
-    total: lastMoneyLabeled(text, 'Valor Total') || lastMoneyLabeled(text, 'Total'),
+    subtotal: moneyLabeled(text, 'Valor Total', 'Total'),
+    total: moneyLabeled(text, 'Valor Total', 'Total'),
     items: parseSimplesItems(text, warnings),
     warnings,
   };
