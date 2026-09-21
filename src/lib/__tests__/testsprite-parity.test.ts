@@ -42,7 +42,7 @@ describe('paridade TestSprite (planos públicos)', () => {
 
   it('Fiscal e Financeiro — matcher do middleware exige sessão', () => {
     expect(middlewareConfig.matcher).toEqual(
-      expect.arrayContaining(['/fiscal/:path*', '/financeiro/:path*', '/gestao/:path*', '/api/:path*']),
+      expect.arrayContaining(['/fiscal/:path*', '/financeiro/:path*', '/gestao/:path*', '/orcamentos/:path*', '/api/:path*']),
     );
     expect(middlewareConfig.matcher.join(' ')).not.toMatch(/\/sobre/);
     expect(middlewareConfig.matcher.join(' ')).not.toMatch(/\/login/);

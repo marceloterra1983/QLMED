@@ -52,7 +52,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
       }
       return NextResponse.json(result.quote);
     } catch (error) {
-      if (error instanceof Error && /Quantidade|Desconto|Frete|item|CNPJ|Preço/i.test(error.message)) {
+      if (error instanceof Error && /Quantidade|Desconto|Frete|item|CNPJ|Preço|Produto/i.test(error.message)) {
         return NextResponse.json({ error: error.message }, { status: 400 });
       }
       throw error;

@@ -69,6 +69,15 @@ export function moneyText(value: { toString(): string } | string | number): stri
   return new Decimal(String(value)).toDecimalPlaces(MONEY, HALF_UP).toFixed(MONEY);
 }
 
+/** IDs pedidos que não estão no conjunto da empresa — isolamento de catálogo. */
+export function unknownProductIds(
+  ownedIds: string[],
+  requested: Array<string | null | undefined>,
+): string[] {
+  const owned = new Set(ownedIds);
+  return [...new Set(requested.filter((id): id is string => Boolean(id)))].filter((id) => !owned.has(id));
+}
+
 /** Data civil `YYYY-MM-DD` em America/Sao_Paulo — valor do campo Data do orçamento. */
 export function todayYmd(now = new Date()): string {
   const fmt = new Intl.DateTimeFormat('en-CA', {
