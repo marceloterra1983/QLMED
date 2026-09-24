@@ -28,7 +28,7 @@ database through its `qlmed` backup set.
 ## Fonte de verdade
 
 - o repositorio `QLMED` e a unica fonte de verdade para codigo e manifests de producao
-- `/srv/qlmed` e o runtime canônico; `/home/marce/qlmed/production` e o alias de compatibilidade usado pelo workflow `QLMED Production Deploy`
+- `/srv/qlmed` na vps2 e o runtime canônico; `/home/marce/qlmed/production` neste `dev` e o staging do builder usado por `npm run deploy:local -- DEPLOY <SHA> --publish`
 - o codigo do app fica em `/srv/qlmed/app`; compose, envs e metadados de deploy ficam no diretorio pai
 - nao editar os manifests implantados a mao no host
 
@@ -39,7 +39,7 @@ Sequencia real:
 1. merge no `main` local;
 2. `git push origin main` (backup);
 3. recibo de `npm run verify:release` para esse SHA;
-4. `npm run deploy:local` confirma o recibo e para antes de mutar a vps2.
+4. `npm run deploy:local -- DEPLOY <SHA> --publish` sobe essa revisao na vps2. Sem `--publish` o comando so imprime `DRY_RUN_OK`.
 
 Notas:
 

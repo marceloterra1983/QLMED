@@ -10,7 +10,7 @@ Activate when the user asks about Docker containers, stack management, rebuildin
 
 ## Stack architecture
 
-The QLMED stack is managed by Docker Compose from `/srv/qlmed/docker-compose.yml`. GitHub Actions is the production deployment controller.
+The QLMED stack runs on vps2 from `/srv/qlmed/docker-compose.yml`. Publication is local: `npm run verify:release <SHA>`, then `npm run deploy:local -- DEPLOY <SHA> --publish`. GitHub is backup only.
 
 | Service | Container name | Port |
 |---|---|---|
@@ -23,8 +23,8 @@ The QLMED stack is managed by Docker Compose from `/srv/qlmed/docker-compose.yml
 
 ## Important notes
 
-- `/srv/qlmed` is the canonical runtime; `~/qlmed/production` is its compatibility alias.
-- Production changes go through the GitHub Actions deployment workflow.
+- `/srv/qlmed` on vps2 is the runtime. On this dev host, `~/qlmed/production` is the builder staging directory.
+- Do not rebuild production from this host with `docker compose up --build`. That bypasses the receipt.
 - Use `docker compose --project-name qlmed --env-file /srv/qlmed/.env -f /srv/qlmed/docker-compose.yml` for read-only inspection and authorized recovery.
 
 ## Common commands
@@ -51,10 +51,11 @@ curl http://127.0.0.1:8085              # Evolution
 docker exec -it qlmed-db psql -U postgres -d postgres
 ```
 
-### Rebuild via GitHub Actions deploy
+### Publish a verified revision
 ```bash
-cd /srv/qlmed
-docker compose --project-name qlmed --env-file .env up -d --build qlmed-app
+cd ~/qlmed/app
+npm run verify:release <FULL_40_CHAR_SHA>
+npm run deploy:local -- DEPLOY <FULL_40_CHAR_SHA> --publish
 ```
 
 ### Check disk/resources

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # qlmed-app-ci-loop.sh — loop autônomo de melhoria contínua do app QLMED
 #
-# Ciclo: medir → classificar → propor (issue + PR seguro) → humano aprova → CI/deploy.
+# Ciclo antigo: medir → classificar → propor pull request. Esse caminho está aposentado.
+# --mode propose recusa. --mode audit ainda só mede.
 # Nunca mergeia. Nunca sobe major de next/prisma/react sozinho.
 #
 # Uso:
@@ -29,6 +30,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ "$MODE" == "audit" || "$MODE" == "propose" ]] || { echo "mode inválido" >&2; exit 2; }
+if [[ "$MODE" == "propose" ]]; then
+  echo "Recusando: pull request não é mais o fluxo. Verificação e publish são locais (AGENTS.md)." >&2
+  exit 1
+fi
 [[ -f "$POLICY" ]] || { echo "policy ausente: $POLICY" >&2; exit 1; }
 [[ -d "$REPO_DIR" ]] || { echo "QLMED app dir ausente: $REPO_DIR" >&2; exit 1; }
 

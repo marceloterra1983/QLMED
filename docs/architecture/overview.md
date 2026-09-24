@@ -37,5 +37,7 @@ QLMED has one persistent canonical PostgreSQL database (`postgres`) through
 `DATABASE_URL`, plus disposable CI `qlmed_ci`. See
 [ADR-0020](../decisions/0020-omarchy-next-canonical-writer-tunnel.md).
 
-Production deployment remains driven by the GitHub Actions workflow after CI
-succeeds on `main`.
+Production publication is local. `npm run verify:release <SHA>` runs inside
+the isolated container and writes a receipt. `npm run deploy:local -- DEPLOY
+<SHA> --publish` updates vps2. `git push origin main` is backup only. See
+[ADR-0021](../decisions/0021-verificacao-e-deploy-locais.md).

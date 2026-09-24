@@ -24,8 +24,8 @@ Modelo operacional do projeto:
 - Preview canônico: worktree `~/qlmed/.worktrees/preview` na porta **3002**
 - **não** subir n8n
 - `Evolution usado pelo prod`: `https://evolution.qlmed.com.br`
-- `DATABASE_URL` no `dev` aponta só para o Postgres isolado local (`127.0.0.1`).
-  Não crie aliases `*_DEV`/`*_PROD` nem o nome de banco `qlmed_dev`.
+- `DATABASE_URL` no `dev` (Next e preview) é o túnel `127.0.0.1:5435` até o
+  writer da vps2. Não crie aliases `*_DEV`/`*_PROD` nem o nome de banco `qlmed_dev`.
 - Serviços de fundo desligados no `dev`: `QLMED_DISABLE_BACKGROUND_SERVICES=true`
 - Antes de uma operação que possa alterar dados **na vps2**, confirme o receipt
   recente do conjunto `qlmed` no backup. O código não lê `.env` nem backups.
@@ -38,16 +38,17 @@ Modelo operacional do projeto:
   do rsync de deploy e pode conter artefatos antigos
 - `/home/marce/qlmed/production` neste `dev` é staging do builder; o runtime
   canônico `/srv/qlmed` fica na **vps2**
-- a publicacao do app em `https://app.qlmed.com.br` **nao** parte do push. O `main` local e a fonte. `git push origin main` e so backup. Os workflows de CI e de deploy estao desligados. `npm run verify:release <SHA>` corre no container isolado. `npm run deploy:local` para antes de publicar.
+- a publicacao do app em `https://app.qlmed.com.br` **nao** parte do push. O `main` local e a fonte. `git push origin main` e so backup. Os workflows de CI e de deploy estao desligados.
 
 ## Publicacao
 
 Sequencia real:
 
-1. merge no `main` local (checkout canônico `~/qlmed/app`);
-2. `git push origin main` (backup, fast-forward);
-3. quando for autorizar uma revisao, `npm run verify:release <SHA>` e o recibo em `/home/marce/qlmed/var/release-receipts/<SHA>.json`;
-4. `npm run deploy:local DEPLOY <SHA>` so imprime `DRY_RUN_OK` — nao publica.
+1. enquanto edita, no host: `npm test`, `npm run lint`, `npm run typecheck` (feedback; nao autoriza publish);
+2. antes do merge no `main` local: `npm run verify:release <SHA>` — suite no container `qlmed-ci-linux-01`, recibo em `/home/marce/qlmed/var/release-receipts/<SHA>.json` (vale 24 h);
+3. merge no `main` local (checkout canônico `~/qlmed/app`);
+4. `git push origin main` (backup, fast-forward);
+5. quando for subir a vps2: `npm run deploy:local -- DEPLOY <SHA> --publish`. Sem `--publish` o comando so imprime `DRY_RUN_OK`.
 
 - execute os comandos somente no checkout canônico `~/qlmed/app`, nunca no runtime `/srv/qlmed/app`
 - `npm run publish:server` faz `git push origin main` e imprime um comando de dispatch antigo; nao use esse dispatch
