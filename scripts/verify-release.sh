@@ -164,7 +164,9 @@ qlmed_verify_host() {
   # shellcheck disable=SC2064
   trap "rm -f '$archive' '$log_file'" RETURN
   git archive --format=tar "$sha" >"$archive"
+  chmod a+r "$archive"
   # /tmp inside this image is a tmpfs docker cp cannot see. The work mount can.
+  # docker cp keeps the mode. mktemp is 0600 and the container user could not read it.
   docker exec "$QLMED_RELEASE_CONTAINER" mkdir -p /runner/_work/qlmed-release
   docker cp "$archive" "$QLMED_RELEASE_CONTAINER:/runner/_work/qlmed-release/tree.tar"
   if ! docker exec \
@@ -179,6 +181,7 @@ qlmed_verify_host() {
      workdir=/runner/_work/qlmed-release/src
      rm -rf "$workdir"
      mkdir -p "$workdir"
+     chmod a+r /runner/_work/qlmed-release/tree.tar || true
      tar -xf /runner/_work/qlmed-release/tree.tar -C "$workdir"
      cd "$workdir"
      set +e
