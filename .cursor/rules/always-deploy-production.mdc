@@ -24,11 +24,11 @@ Não invente outra porta nem outro Next. Detalhes: rule
 
 ## Publicar
 
-O Actions não publica mais. `npm run deploy:local DEPLOY <SHA>` só confirma o
-recibo e imprime `DRY_RUN_OK`. Não chama a vps2. Não diga que a produção subiu.
+Não publique sozinho. O comando que muda a vps2 é explícito:
 
-Antes de um futuro publish real, o SHA precisa do recibo de
-`npm run verify:release <SHA>`. Sem esse recibo, não há autorização.
+`npm run deploy:local -- DEPLOY <SHA> --publish`
+
+Ele exige o recibo de `npm run verify:release <SHA>`, com menos de 24 h, e o SHA tem de ser o tip do `main` local. Sem `--publish` o comando só imprime `DRY_RUN_OK`.
 
 Se a tarefa criou migration Prisma, o mesmo commit tem de atualizar
 `scripts/verify-production-migration-window.cjs` (`EXPECTED_MIGRATION` + SHA do

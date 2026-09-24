@@ -44,9 +44,16 @@ with open(path, encoding="utf-8") as fh:
     data = json.load(fh)
 if data.get("sha") != expected or data.get("ok") is not True:
     sys.exit(1)
+finished = data.get("finishedAt")
+if finished:
+    from datetime import datetime, timezone
+    stamp = datetime.fromisoformat(finished.replace("Z", "+00:00"))
+    age = (datetime.now(timezone.utc) - stamp).total_seconds()
+    if age > 86400:
+        sys.exit(2)
 PY
 then
-  echo "Refusing deploy: receipt ${receipt_path} must have matching sha and ok true" >&2
+  echo "Refusing deploy: receipt ${receipt_path} must have matching sha, ok true, and finishedAt within 24h" >&2
   exit 1
 fi
 
@@ -55,6 +62,10 @@ if [[ "${QLMED_DEPLOY_SKIP_ANCESTOR:-}" != "1" ]]; then
     echo "Refusing deploy: origin/main is not an ancestor of ${sha}" >&2
     exit 1
   fi
+fi
+
+if [[ "${3:-}" == "--publish" ]]; then
+  exec bash "$root/scripts/publish-local.sh" "$sha"
 fi
 
 echo "DRY_RUN_OK"

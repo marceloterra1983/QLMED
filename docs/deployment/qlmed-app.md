@@ -210,39 +210,23 @@ database, que é o de produção, ele altera DDL sem deixar histórico e sem pas
 pelo `migrate deploy` do arranque. O único caminho de schema é uma migração
 versionada em `prisma/migrations/`, aplicada por `migrate deploy`.
 
-### Deploy via GitHub Actions
+### Verificação e publish locais
 
-Deploy é **manual e fail-closed**. Não há gatilho por evento: o hardening de CI
-proíbe `pull_request_target`, `issue_comment` e o gatilho encadeado de workflow
-em todo `.github/workflows/` (`scripts/verify-ci-hardening.sh`), justamente para
-que CI verde nunca implante sozinho.
+Três tempos. O push não verifica e não publica.
+
+1. No host, enquanto edita: `npm test`, `npm run lint`, `npm run typecheck`.
+2. Antes do merge no `main` local: `npm run verify:release <SHA>`. A suíte corre no container `qlmed-ci-linux-01`, contra `qlmed-ci-db:5432`. O recibo fica em `/home/marce/qlmed/var/release-receipts/<SHA>.json` e vale 24 h.
+3. Para subir a vps2: `npm run deploy:local -- DEPLOY <SHA> --publish`.
 
 ```bash
-# 1. publicar main (não implanta nada)
-npm run publish:server
-
-# 2. esperar o QLMED CI ficar verde para esse SHA
-
-# 3. despachar o deploy, com o SHA completo de 40 caracteres
-# Cloud Agent / automação: use o script (QLMED_DEPLOY_GH_TOKEN).
-bash scripts/deploy-production.sh <FULL_40_CHAR_SHA>
-# Equivalente manual (PAT/usuário com actions:write):
-gh workflow run deploy-production.yml \
-  --ref main \
-  -f confirm_production=DEPLOY \
-  -f revision=<FULL_40_CHAR_SHA>
-
-# 4. depois do workflow verde
-npm run check:deploy
+npm run verify:release <FULL_40_CHAR_SHA>
+npm run deploy:local -- DEPLOY <FULL_40_CHAR_SHA>          # só confirma o recibo
+npm run deploy:local -- DEPLOY <FULL_40_CHAR_SHA> --publish
 ```
 
-O runner self-hosted (`qlmed-prod`) sincroniza, rebuilda a imagem, para o
-`qlmed-app`, roda `migrate deploy` + `migrate diff --exit-code` dentro da
-janela de migração, sobe de novo, faz health-check (local + público + revisão)
-e reverte a imagem automaticamente em falha (trap ERR).
+Sem `--publish` o comando imprime `DRY_RUN_OK` e não abre SSH. Com `--publish`, sincroniza, constrói a imagem neste host, envia para a vps2, corre a janela de migração e faz health. Falha antes do check público restaura a imagem anterior. Rollback de imagem não desfaz migração.
 
-O deploy aceita **apenas o tip atual de `origin/main`**, não um SHA histórico
-qualquer.
+O deploy aceita só o tip do `main` local.
 
 ### Rollback
 

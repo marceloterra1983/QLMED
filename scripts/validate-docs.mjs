@@ -94,7 +94,7 @@ const DEPLOY_DOC_BANS = [
   {
     pattern: /\bworkflow_run\b/,
     fencedOnly: false,
-    message: '`workflow_run`: gatilho proibido pelo hardening de CI; o deploy é `workflow_dispatch` manual',
+    message: '`workflow_run`: gatilho proibido; publicar é npm run deploy:local depois do recibo de verify:release',
   },
 ];
 

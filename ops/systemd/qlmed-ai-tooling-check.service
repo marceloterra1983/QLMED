@@ -1,0 +1,7 @@
+[Unit]
+Description=QLMED AI tooling check (local, replaces the GitHub drift workflow)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/marce/qlmed/app
+ExecStart=/bin/bash -lc 'export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use 22; cd /home/marce/qlmed/app && npm run ai-tooling:check'

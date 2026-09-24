@@ -144,11 +144,15 @@ túnel do writer publica `127.0.0.1:5435`.
 ### Deploy e migração de schema
 
 O `main` local é a fonte. `git push origin main` é só espelho (fast-forward).
-Não abra pull request e não despache workflow. A verificação de release é
-`npm run verify:release <SHA>` (corre dentro do container `qlmed-ci-linux-01`).
-`npm run deploy:local` recusa sem o recibo desse SHA e para antes de publicar
-na vps2 — o passo que sobe a imagem ainda não está nesse script.
-`scripts/deploy-production.sh` só chama o Actions e não é mais o caminho.
+Não abra pull request e não despache workflow.
+
+Verificação, em três tempos:
+
+1. Enquanto edita, no host: `npm test`, `npm run lint`, `npm run typecheck` no que mudou. Isto é feedback. Não autoriza publish.
+2. Antes de merge no `main` local: `npm run verify:release <SHA>`. Corre dentro do container `qlmed-ci-linux-01` (rede internal, sidecar `qlmed-ci-db:5432`), a mesma lista que o CI corria. Sucesso grava `/home/marce/qlmed/var/release-receipts/<SHA>.json`. Sem recibo, não há publish.
+3. Publish, só quando for subir a vps2: `npm run deploy:local -- DEPLOY <SHA> --publish`. Recusa sem recibo, se o recibo tiver mais de 24 h, ou se o SHA não for o tip do `main` local.
+
+`scripts/deploy-production.sh` recusa: o Actions não publica mais.
 Migrações seguem expand/contract — rollback de imagem
 **não** desfaz migração aplicada, por isso migração nova é expand-only
 (portão em `src/lib/__tests__/deploy-manifests.test.ts`).

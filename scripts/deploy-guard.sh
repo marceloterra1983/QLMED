@@ -65,8 +65,8 @@ qlmed_refuse_public_production() {
   for root in "${QLMED_PUBLIC_PRODUCTION_ROOTS[@]}"; do
     if [[ "$canonical_dir" == "$root" || "$canonical_dir" == "$root"/* ]]; then
       echo "Recusado: DEPLOY_DIR=${deploy_dir} é a raiz de produção pública." >&2
-      echo "Produção pública só sai por 'gh workflow run deploy-production.yml'" >&2
-      echo "(workflow_dispatch manual, com CI verde no SHA de origin/main)." >&2
+      echo "Produção pública só sai por 'npm run deploy:local -- DEPLOY <SHA> --publish'" >&2
+      echo "(recibo de npm run verify:release para esse SHA, tip do main local)." >&2
       return 1
     fi
   done

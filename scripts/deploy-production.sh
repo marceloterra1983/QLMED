@@ -30,6 +30,9 @@ if [[ $# -gt 1 ]]; then
   exit 1
 fi
 
+echo "Refusing: GitHub Actions deploy is retired. Verify with npm run verify:release, then npm run deploy:local -- DEPLOY <SHA> --publish" >&2
+exit 1
+
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "Missing required command: $1" >&2

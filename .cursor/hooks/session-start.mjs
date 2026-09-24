@@ -20,7 +20,7 @@ const additional_context = [
   'After code edits run `graphify update .` (AST-only).',
   'Behavior, contracts, data, security or architecture changes require Spec Kit: read governance.yaml, .specify/memory/constitution.md and specs/, then use .cursor/skills/speckit-*.',
   'Do not upgrade the Spec Kit pin on main. Do not read or commit .env.',
-  'Git local is the source. git push origin main is backup only. Do not open pull requests. Do not workflow_dispatch. Release verify: npm run verify:release <sha> inside qlmed-ci-linux-01. deploy-local stops before publishing.',
+  'Git local is the source. git push origin main is backup only. Do not open pull requests. Do not workflow_dispatch. Before merge to local main: npm run verify:release <sha> (container qlmed-ci-linux-01, writes a receipt). Publish only when asked: npm run deploy:local -- DEPLOY <sha> --publish.',
 ].join(' ');
 
 process.stdout.write(JSON.stringify({ additional_context }));

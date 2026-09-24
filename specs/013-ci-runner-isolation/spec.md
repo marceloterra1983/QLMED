@@ -46,7 +46,7 @@ A regra antiga proibia a **string** `self-hosted`. O que a auditoria quis proteg
 
 O QLMED **é repositório público**. Isolamento **não** é visibilidade. Isolamento é o contentor + overlay + `approval_policy: all_external_contributors` + guarda de origem no YAML (igual ao Farol). Um `if` no workflow não é fronteira contra YAML de fork depois de Approve.
 
-`deploy-production.yml` continua em `qlmed-prod` (`runs-on: [qlmed-prod]`, environment `production`, só `workflow_dispatch`).
+O isolamento abaixo continua obrigatório. Quem invoca a verificação deixou de ser um job do Actions: é `npm run verify:release`, por `docker exec` neste mesmo container. Publicar é `npm run deploy:local -- DEPLOY <SHA> --publish`, depois do recibo (ADR-0021). O workflow `deploy-production.yml` está desligado.
 
 ### Banco de CI
 

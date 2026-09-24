@@ -64,4 +64,17 @@ expect_ok "recibo ok dry-run" \
   env QLMED_RECEIPT_DIR="$tmpdir" QLMED_DEPLOY_MAIN_SHA="$sha40" QLMED_DEPLOY_SKIP_ANCESTOR=1 \
   "$script" DEPLOY "$sha40"
 
+# recibo com mais de 24 h
+python3 - "$tmpdir/${sha40}.json" "$sha40" <<'PY'
+import json, sys
+from datetime import datetime, timedelta, timezone
+path, sha = sys.argv[1:]
+old = (datetime.now(timezone.utc) - timedelta(hours=48)).strftime("%Y-%m-%dT%H:%M:%SZ")
+with open(path, "w", encoding="utf-8") as fh:
+    json.dump({"sha": sha, "ok": True, "finishedAt": old}, fh)
+PY
+expect_refuse "recibo com mais de 24h" \
+  env QLMED_RECEIPT_DIR="$tmpdir" QLMED_DEPLOY_MAIN_SHA="$sha40" QLMED_DEPLOY_SKIP_ANCESTOR=1 \
+  "$script" DEPLOY "$sha40"
+
 echo "ok"
