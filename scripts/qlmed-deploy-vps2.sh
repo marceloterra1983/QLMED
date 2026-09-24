@@ -18,6 +18,20 @@ rsync_writer() {
   rsync -e "ssh ${SSH_OPTS[*]}" "$@"
 }
 
+# Prefer QLMED_DEPLOY_RUN_ID (local); fall back to GITHUB_RUN_ID (Actions).
+resolve_deploy_run_id() {
+  if [[ -n "${QLMED_DEPLOY_RUN_ID:-}" ]]; then
+    printf '%s' "$QLMED_DEPLOY_RUN_ID"
+    return 0
+  fi
+  if [[ -n "${GITHUB_RUN_ID:-}" ]]; then
+    printf '%s' "$GITHUB_RUN_ID"
+    return 0
+  fi
+  echo "QLMED_DEPLOY_RUN_ID or GITHUB_RUN_ID is unset" >&2
+  return 1
+}
+
 usage() {
   cat <<'EOF' >&2
 Usage: QLMED_DEPLOY_HOST=vps2 scripts/qlmed-deploy-vps2.sh <command>
@@ -50,13 +64,15 @@ case "$cmd" in
 
   capture-rollback)
     if ssh_writer 'docker inspect qlmed-app >/dev/null 2>&1'; then
-      run_id="${GITHUB_RUN_ID:?GITHUB_RUN_ID is unset}"
+      run_id="$(resolve_deploy_run_id)"
       ssh_writer "set -euo pipefail
         current_image=\$(docker inspect qlmed-app --format '{{.Image}}')
         docker tag \"\$current_image\" \"qlmed-app:rollback-${run_id}\"
         docker tag \"\$current_image\" qlmed-app:previous"
       if [[ -n "${GITHUB_ENV:-}" ]]; then
         echo "ROLLBACK_IMAGE_AVAILABLE=1" >> "$GITHUB_ENV"
+      elif [[ -n "${QLMED_DEPLOY_RUN_ID:-}" ]]; then
+        echo "ROLLBACK_IMAGE_AVAILABLE=1"
       fi
     fi
     ;;
@@ -73,7 +89,7 @@ case "$cmd" in
     ;;
 
   release)
-    run_id="${GITHUB_RUN_ID:?GITHUB_RUN_ID is unset}"
+    run_id="$(resolve_deploy_run_id)"
     rollback_available="${ROLLBACK_IMAGE_AVAILABLE:-0}"
     ssh_writer "ROLLBACK_AVAILABLE=$(printf '%q' "$rollback_available") RUN_ID=$(printf '%q' "$run_id") PROD=$(printf '%q' "$PROD") bash -s" <<'EOS'
 set -euo pipefail
@@ -149,7 +165,7 @@ EOS
     ;;
 
   tag-previous)
-    run_id="${GITHUB_RUN_ID:?GITHUB_RUN_ID is unset}"
+    run_id="$(resolve_deploy_run_id)"
     ssh_writer "set -euo pipefail
       docker image inspect qlmed-app:rollback-${run_id} >/dev/null
       docker tag qlmed-app:rollback-${run_id} qlmed-app:previous
@@ -157,12 +173,12 @@ EOS
     ;;
 
   rmi-rollback)
-    run_id="${GITHUB_RUN_ID:?GITHUB_RUN_ID is unset}"
+    run_id="$(resolve_deploy_run_id)"
     ssh_writer "docker rmi qlmed-app:rollback-${run_id} >/dev/null 2>&1 || true"
     ;;
 
   rollback)
-    run_id="${GITHUB_RUN_ID:?GITHUB_RUN_ID is unset}"
+    run_id="$(resolve_deploy_run_id)"
     ssh_writer "PROD=$(printf '%q' "$PROD") RUN_ID=$(printf '%q' "$run_id") bash -s" <<'EOS'
 set -euo pipefail
 set -a

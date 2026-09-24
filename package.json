@@ -23,6 +23,8 @@
     "ai-tooling:check:test": "bash ./scripts/test-ai-tooling-check.sh",
     "check:deploy": "bash ./scripts/check-deploy-alignment.sh",
     "deploy:production": "bash ./scripts/deploy-production.sh",
+    "deploy:local": "bash ./scripts/deploy-local.sh",
+    "verify:release": "bash ./scripts/verify-release.sh",
     "publish:server": "bash ./scripts/publish-server.sh",
     "db:studio": "prisma studio",
     "db:migrate:deploy": "prisma migrate deploy",

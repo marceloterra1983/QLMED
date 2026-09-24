@@ -46,3 +46,13 @@ Ciclo de vida simétrico e encerramento gracioso no Supervisor de Background: [A
 
 Trace-as-State para parsers de operadoras e Resiliência HTTP com Jitter Backoff: [ADR-0018](./0018-trace-as-state-parsers-and-resilience.md).
 
+Verificação e deploy locais: [ADR-0021](./0021-verificacao-e-deploy-locais.md).
+O invocador do portão de release passa a ser `docker exec` no host, mas o
+ambiente de execução continua a ser o contentor isolado
+`github-runner-qlmed-ci-linux-01-runner-linux-1` (uid 10001, rede `internal`,
+sidecar `qlmed-ci-db:5432`) — SPEC-013 FR-001 permanece: o portão não corre como
+`marce` no host. A autoridade do merge para produção passa a ser o recibo local
+em `/home/marce/qlmed/var/release-receipts/<sha>.json`, escrito só após `exit 0`,
+mais revisão humana no merge local; o GitHub fica como espelho. Contrato em
+[SPEC-087](../../specs/087-verificacao-deploy-local/spec.md).
+
