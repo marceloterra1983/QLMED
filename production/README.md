@@ -8,7 +8,7 @@ Fonte de verdade dos manifests de producao do QLMED.
 - app: `https://app.qlmed.com.br`
 - n8n: aposentado
 - evolution: `https://evolution.qlmed.com.br`
-- publicacao: GitHub Actions `QLMED Production Deploy` (manual)
+- publicacao: main local; GitHub e so backup. Workflows de CI e deploy desligados.
 
 ## Estrutura remota esperada
 
@@ -36,25 +36,16 @@ database through its `qlmed` backup set.
 
 Sequencia real:
 
-1. push/merge em `main`;
-2. `QLMED CI` (`ci.yml`) do **mesmo** SHA em `main` com `conclusion=success` (evento `push`);
-3. dispatch manual de `QLMED Production Deploy` em `main` com:
-   - `confirm_production` exatamente `DEPLOY`;
-   - `revision` = SHA completo (40 hex minusculos) de `origin/main`;
-4. gates internos (confirmacao, ref, SHA, CI do SHA, re-check de main) **antes** de qualquer mutacao;
-5. sync/build/migrate/health no runner `qlmed-prod`.
+1. merge no `main` local;
+2. `git push origin main` (backup);
+3. recibo de `npm run verify:release` para esse SHA;
+4. `npm run deploy:local` confirma o recibo e para antes de mutar a vps2.
 
 Notas:
 
-- **CI bem-sucedida nao dispara deploy.** O environment `production` so tem politica **main-only** (sem required reviewers); a autorizacao e o `workflow_dispatch` + inputs.
-- o workflow falha fechado se faltar CI do SHA, se main avancou, ou se a confirmacao/ref forem invalidas; ele mesmo valida health e revisao implantada.
-- `npm run publish:server` **somente** faz o push e imprime o comando de dispatch; **nao** dispara nem aguarda o deploy.
-- apos CI verde e dispatch manual, acompanhe o workflow no GitHub; depois do sucesso, `npm run check:deploy`.
-- `scripts/deploy-server.sh --legacy` permanece apenas como recuperacao operacional manual.
-- rollback da producao publica:
-  - falha no meio do workflow: rollback automatico de imagem daquela execucao;
-  - opcao manual no host: recovery com a imagem preservada `qlmed-app:previous` (nao e o `scripts/rollback-server.sh`);
-  - codigo anterior via Actions: commit de revert/recovery em `main` (novo tip), CI desse SHA, depois dispatch do `origin/main` atual (o gate so aceita o tip atual).
+- Os workflows de CI e de deploy estao desligados. Push nao publica.
+- `npm run publish:server` faz o push e imprime um comando de dispatch antigo; nao use esse dispatch.
+- Imagem anterior na vps2, quando existir: tag `qlmed-app:previous`. Rollback de imagem nao desfaz migracao.
 - o Postgres 18 deve montar o volume em `/var/lib/postgresql` com `PGDATA=/var/lib/postgresql/18/docker`; voltar para `/var/lib/postgresql/data` recria um volume anonimo vazio a cada deploy
 - os segredos continuam apenas no host remoto
 - `https://app.qlmed.com.br/api/health` deve expor o `build.commitSha` completo do release ativo

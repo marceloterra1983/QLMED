@@ -33,7 +33,7 @@ Não pergunte se quer preview; use-o. Não suba outro Next.
    reiniciar a unit). Não criar segunda instância Next.
 6. **Antes de merge/deploy** (mudança visível na UI ou fluxo web): smoke no
    preview (`curl` local e/ou browser em `http://100.68.84.119:3002`).
-   Só então PR/merge e deploy de produção.
+   Só então merge no `main` local e `git push` de backup. Não abra pull request.
 7. **Editar:** caminho absoluto na worktree; não `move_agent_to_root`.
 
 ## Diagnóstico

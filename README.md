@@ -38,25 +38,21 @@ Modelo operacional do projeto:
   do rsync de deploy e pode conter artefatos antigos
 - `/home/marce/qlmed/production` neste `dev` é staging do builder; o runtime
   canônico `/srv/qlmed` fica na **vps2**
-- a publicacao do app em `https://app.qlmed.com.br` **nao** e automatica no push: exige CI verde no SHA de `main` e um `workflow_dispatch` manual do `QLMED Production Deploy` (sem required reviewers no environment; so politica main-only)
+- a publicacao do app em `https://app.qlmed.com.br` **nao** parte do push. O `main` local e a fonte. `git push origin main` e so backup. Os workflows de CI e de deploy estao desligados. `npm run verify:release <SHA>` corre no container isolado. `npm run deploy:local` para antes de publicar.
 
 ## Publicacao
 
 Sequencia real:
 
-1. push/merge em `main` (checkout canônico `~/qlmed/app`);
-2. `QLMED CI` para esse SHA em `main` conclui com sucesso;
-3. dispatch manual de `QLMED Production Deploy` com `confirm_production=DEPLOY` e `revision=<SHA_COMPLETO>`;
-4. gates internos (confirmacao, ref, SHA == origin/main, CI do mesmo SHA, re-check antes de mutar);
-5. deploy no runner self-hosted `qlmed-prod`.
+1. merge no `main` local (checkout canônico `~/qlmed/app`);
+2. `git push origin main` (backup, fast-forward);
+3. quando for autorizar uma revisao, `npm run verify:release <SHA>` e o recibo em `/home/marce/qlmed/var/release-receipts/<SHA>.json`;
+4. `npm run deploy:local DEPLOY <SHA>` so imprime `DRY_RUN_OK` — nao publica.
 
 - execute os comandos somente no checkout canônico `~/qlmed/app`, nunca no runtime `/srv/qlmed/app`
-- `npm run publish:server` **somente** faz `git push origin main` e imprime o SHA + o comando de dispatch; **nao** dispara deploy e **nao** aguarda health
-- apos o push: aguarde CI verde do SHA, faca o `workflow_dispatch` manual, acompanhe o workflow no GitHub (o workflow valida health e revisao)
-- depois que o workflow concluir com sucesso, execute `npm run check:deploy`
-- `npm run deploy:server` e `npm run rollback:server` foram REMOVIDOS na auditoria b177b07: pre-passavam `--legacy` e tinham a raiz de producao publica como padrao, entao publicavam `app.qlmed.com.br` sem nenhum dos gates acima
-- `scripts/deploy-server.sh` e `scripts/rollback-server.sh` sobrevivem so para a stack legada e agora recusam destino publico; exigem `DEPLOY_DIR` nao publico, `DEPLOY_HEALTHCHECK_URL` nao publico e `DEPLOY_CONFIRM=DEPLOY-LEGACY`
-- producao publica: rollback automatico de imagem na falha do workflow; `qlmed-app:previous` so no host (manual); codigo anterior via Actions exige revert/recovery em `main` (novo tip), CI desse SHA e dispatch do `origin/main` atual
+- `npm run publish:server` faz `git push origin main` e imprime um comando de dispatch antigo; nao use esse dispatch
+- `npm run deploy:server` e `npm run rollback:server` foram REMOVIDOS na auditoria b177b07
+- `scripts/deploy-server.sh` e `scripts/rollback-server.sh` recusam destino publico
 
 ## Regras
 

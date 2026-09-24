@@ -133,8 +133,8 @@ Evolution API (WhatsApp). n8n aposentado.
 ### Comandos comuns
 
 ```bash
-# Produção: somente na vps2, via workflow_dispatch — não compose up neste host
-curl http://127.0.0.1:13000/api/health   # na vps2
+# Produção: health na vps2. Não há deploy por GitHub Actions.
+curl http://127.0.0.1:13000/api/health   # na vps2, via SSH
 ```
 
 Scripts de app (`dev`, `build`, `lint`, `db:*`) estão em `package.json`.
@@ -143,16 +143,15 @@ túnel do writer publica `127.0.0.1:5435`.
 
 ### Deploy e migração de schema
 
-Deploy **não** roda no push. Push para `main` roda o `QLMED CI` e para aí;
-publicar exige `workflow_dispatch` de `deploy-production.yml`, com
-  `confirm_production=DEPLOY` e o SHA de 40 caracteres do tip de `origin/main`
-  que já tem CI verde. Cloud Agents: `bash scripts/deploy-production.sh <SHA>`
-  (requer secret `QLMED_DEPLOY_GH_TOKEN`; o token Cursor App não tem
-  `actions:write`). Migrações seguem expand/contract — rollback de imagem
+O `main` local é a fonte. `git push origin main` é só espelho (fast-forward).
+Não abra pull request e não despache workflow. A verificação de release é
+`npm run verify:release <SHA>` (corre dentro do container `qlmed-ci-linux-01`).
+`npm run deploy:local` recusa sem o recibo desse SHA e para antes de publicar
+na vps2 — o passo que sobe a imagem ainda não está nesse script.
+`scripts/deploy-production.sh` só chama o Actions e não é mais o caminho.
+Migrações seguem expand/contract — rollback de imagem
 **não** desfaz migração aplicada, por isso migração nova é expand-only
-(portão em `src/lib/__tests__/deploy-manifests.test.ts`). Procedimento completo
-na skill `qlmed-deploy` (`.claude/skills/qlmed-deploy/SKILL.md`) e em
-`docs/deployment/qlmed-app.md`.
+(portão em `src/lib/__tests__/deploy-manifests.test.ts`).
 
 `npm run deploy:server` e `npm run rollback:server` **não existem mais**
 (auditoria b177b07): pré-passavam `--legacy` e tinham a raiz de produção
@@ -181,7 +180,7 @@ Starter: `ops/scripts/qlmed-dev-preview-starter.mjs`
 `npm run dev` no bash do Cursor morre com o agente. **Não** suba outro Next.
 **Única porta de preview = 3002.** Proibido 3003/3004. Feature com UI:
 checkout/rebase do tip **nessa** worktree (ou override do `cwd` do starter),
-smoke em `:3002`, **depois** PR/merge/deploy.
+smoke em `:3002`, **depois** merge no `main` local e `git push` de backup.
 
 - `NEXTAUTH_URL` (obrigatória em `src/lib/env.ts`): preview HTTP exige
   `http://100.68.84.119:3002`. Herdar `https://app.qlmed.com.br` → cookie
@@ -197,26 +196,16 @@ smoke em `:3002`, **depois** PR/merge/deploy.
 
 ### CI, runners e merge
 
-- `main` tem ruleset ativo (`main: CI verde antes do merge`, sem bypass):
-  só entra por PR, exige o check `quality` de `ci.yml`, sem push direto,
-  sem force-push, sem apagar. Push direto devolve `GH013`.
-- Mesclar: `gh pr merge --auto --squash <N>` logo após abrir a PR. Fica na
-  fila e mescla sozinho no verde. `gh pr merge` sem `--auto` com check
-  pendente é recusado.
-- CI corre nos runners self-hosted `qlmed-ci-linux-01..03` (containers,
-  2 CPU / 3 GB, profile `validation-linux-qlmed` no repo
-  `GitHub-Runners-Platform`). Saída à internet só pelo proxy squid com
-  allowlist (github.com, githubusercontent, ghcr, registry.npmjs.org,
-  binaries.prisma.sh, nodejs.org…). Não há `gh` no runner: script que
-  precisa da API usa `fetch` + `GITHUB_TOKEN`; `fetch` nativo do Node só
-  honra o proxy com `NODE_USE_ENV_PROXY=1` no `env` do job.
-- Não use `cache: npm` no `setup-node`: o runner limpa `/home/runner` a
-  cada job, o cache nunca restaura e só consome a cota de 10 GB. O cache
-  de `.next/cache` funciona e fica.
-- Deploy corre só no `qlmed-prod-runner` (label `qlmed-prod`, serviço
-  systemd no host). O `auto-update-packages.timer` do host está impedido de
-  reiniciá-lo (needrestart override em
-  `/etc/needrestart/conf.d/99-auto-update-safe.conf`).
+- `main` tem ruleset `main: sem force-push nem delete` (sem bypass):
+  push direto fast-forward é o espelho. Force-push e apagar `main` continuam
+  proibidos. Não há check `quality` nem pull request obrigatório.
+- Não abra PR. Trabalhe em branch local, faça merge no `main` local, depois
+  `git push origin main`.
+- A verificação de release usa o container `qlmed-ci-linux-01` (rede internal,
+  sidecar `qlmed-ci-db:5432`), não o host. Os workflows `QLMED CI`,
+  `QLMED Production Deploy` e `AI tooling drift` estão desligados.
+- Os containers `qlmed-ci-linux-01..03` continuam de pé (2 CPU / 3 GB, profile `validation-linux-qlmed` no repo `GitHub-Runners-Platform`). A saída à internet deles passa pelo proxy squid com allowlist. Não são mais agendados pelo Actions.
+- O listener `qlmed-prod-runner` continua instalado, mas nenhum workflow o chama.
 
 ### Infra notes específicas do host atual
 

@@ -5,8 +5,8 @@ alwaysApply: true
 
 # Produção ao terminar
 
-Quando a tarefa do QLMED fechou (PR mergeado no `main`, ou mudança operacional
-já autorizada), **suba produção**. Não pergunte “quer deploy?”.
+Quando a tarefa do QLMED fechou, faça merge no `main` local e `git push origin main`.
+Isso é backup. Não abra pull request e não despache GitHub Actions.
 
 ## Gate de preview (UI / fluxo web)
 
@@ -17,32 +17,22 @@ Se a mudança afeta UI, login, rotas Next ou comportamento no browser:
 2. Garanta que o preview está servindo o código da mudança (checkout/rebase
    do tip na worktree preview, ou `cwd` do starter na worktree da feature).
 3. Smoke rápido (HTTP no preview + checagem visual/login se couber).
-4. Só então merge e deploy.
+4. Só então merge no `main` local e push de backup.
 
 Não invente outra porta nem outro Next. Detalhes: rule
 `dev-preview-persistente`.
 
-## Deploy produção
+## Publicar
 
-1. Espere o CI `ci.yml` **push/main** verde no SHA de 40 caracteres de `origin/main`.
-2. Garanta env necessário sem imprimir `.env` (ex.: VAPID para Web Push).
-3. Despache com `bash scripts/deploy-production.sh <SHA>` (usa
-   `QLMED_DEPLOY_GH_TOKEN`). **Não** use o `gh` default do Cloud Agent —
-   o token da GitHub App Cursor só tem `actions:read` e devolve 403 em
-   `workflow_dispatch`.
-4. Se o environment `production` pedir aprovação, aprove (`GH_TOKEN=$QLMED_DEPLOY_GH_TOKEN gh …` / `current_user_can_approve`).
-5. Espere o workflow terminar verde. Health: `http://127.0.0.1:13000/api/health` com o SHA novo.
-6. Informe a URL do deploy e o SHA. Não cole segredo.
+O Actions não publica mais. `npm run deploy:local DEPLOY <SHA>` só confirma o
+recibo e imprime `DRY_RUN_OK`. Não chama a vps2. Não diga que a produção subiu.
 
-Se `QLMED_DEPLOY_GH_TOKEN` estiver ausente: peça o secret no environment
-Cloud (PAT fine-grained, Actions=RW no QLMED) e **não** declare o deploy
-feito.
+Antes de um futuro publish real, o SHA precisa do recibo de
+`npm run verify:release <SHA>`. Sem esse recibo, não há autorização.
 
-Se a tarefa criou migration Prisma, o **mesmo PR** tem de atualizar
+Se a tarefa criou migration Prisma, o mesmo commit tem de atualizar
 `scripts/verify-production-migration-window.cjs` (`EXPECTED_MIGRATION` + SHA do
 `migration.sql`) e o assert em `scripts/test-production-migration-window.cjs`.
-Sem isso o deploy recusa a janela e a migration não aplica.
 
-Proibido: terminar só no GitHub; menu “quer que eu suba?”; deploy com CI vermelho;
-force-push em `main`; imprimir `production/env/app.env`; pular o preview canônico
-em mudança de UI.
+Proibido: abrir pull request; `workflow_dispatch`; force-push em `main`;
+imprimir `production/env/app.env`; pular o preview canônico em mudança de UI.

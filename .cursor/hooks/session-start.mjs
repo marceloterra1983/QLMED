@@ -20,7 +20,7 @@ const additional_context = [
   'After code edits run `graphify update .` (AST-only).',
   'Behavior, contracts, data, security or architecture changes require Spec Kit: read governance.yaml, .specify/memory/constitution.md and specs/, then use .cursor/skills/speckit-*.',
   'Do not upgrade the Spec Kit pin on main. Do not read or commit .env.',
-  'Production deploy: bash scripts/deploy-production.sh <sha> (needs QLMED_DEPLOY_GH_TOKEN). Cursor App gh token is actions:read-only and cannot workflow_dispatch.',
+  'Git local is the source. git push origin main is backup only. Do not open pull requests. Do not workflow_dispatch. Release verify: npm run verify:release <sha> inside qlmed-ci-linux-01. deploy-local stops before publishing.',
 ].join(' ');
 
 process.stdout.write(JSON.stringify({ additional_context }));
