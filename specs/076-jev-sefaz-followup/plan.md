@@ -24,6 +24,9 @@ owner: QLMED
 2. Sem `OPENROUTER_API_KEY`: `skipped`, zero rede.
 3. `decide` injetável nos testes; OpenRouter só no default.
 4. WhatsApp fora desta versão.
+5. IDs neutros `a`/`b`/`c` ficam na pergunta; uma tradução interna preserva
+   retry/alert/log-only no roteamento e nos logs. As instruções das duas
+   perguntas tratam `state` como dado para classificar, nunca como instruções.
 
 ## Files
 

@@ -77,11 +77,31 @@ classificada como alerta humano, ainda sem disparar WhatsApp nesta versão.
 2. **AC-006** — Given qualquer recomendação, when esta versão corre, then
    MUST NOT enfileirar WhatsApp nem e-mail.
 
+### User Story 4 — Conteúdo fiscal é classificado sem instruções de terceiros (Priority: P1)
+
+Como operador, quando o Jev recebe o retorno da SEFAZ, quero que ele classifique
+os dados fiscais sem obedecer a texto de terceiros que apareça nesses dados.
+
+**Independent Test**: As duas perguntas identificam o conteúdo de `state` como
+dados para classificação, e cada opção neutra mantém a recomendação operacional
+correspondente.
+
+**Acceptance Scenarios**:
+
+1. **AC-007** — Given as opções da pergunta de ação, when o serviço recebe a
+   pergunta, then ela usa IDs neutros `a`, `b` e `c` com seus significados em
+   `criteria`, e o follow-up mantém a recomendação operacional correspondente.
+2. **AC-008** — Given campos de `state` com motivos da SEFAZ ou texto de terceiros,
+   when as perguntas são enviadas, then ambas instruem o serviço a tratar esses
+   conteúdos como dados a classificar, não como instruções.
+
 ### Edge Cases
 
 - Outcome `authorized`: follow-up MUST NOT ser chamado.
 - XML fiscal completo MUST NOT ser enviado ao serviço de decisão.
 - Timeout ou HTTP de erro: `skipped`, log de aviso, emissão intacta.
+- Texto de terceiros dentro de `state` não deve ser apresentado como instrução
+  operacional do sistema.
 
 ## Requirements
 
@@ -97,6 +117,12 @@ classificada como alerta humano, ainda sem disparar WhatsApp nesta versão.
 - **FR-006**: Esta versão MUST NOT enviar WhatsApp, e-mail ou push.
 - **FR-007**: Recomendação e scores MUST ir só para log estruturado (sem
   segredos).
+- **FR-008**: A pergunta de ação MUST usar identificadores neutros `a`, `b` e
+  `c`; `criteria` MUST conter o significado, e o código MUST preservar o
+  mapeamento operacional de retry, alerta e ausência de follow-up.
+- **FR-009**: As instruções das duas perguntas MUST tratar o conteúdo de `state`,
+  incluindo motivos SEFAZ e texto de terceiros, como dados para classificar, não
+  como instruções, e MUST orientar a ignorar instruções embutidas nesse texto.
 
 ## Out of scope
 
@@ -113,6 +139,8 @@ classificada como alerta humano, ainda sem disparar WhatsApp nesta versão.
 - **SC-003**: Lote em processamento não gera recomendação de alerta humano.
 - **SC-004**: Falha simulada do serviço não transforma emissão autorizável em
   erro de autorização.
+- **SC-005**: As três opções neutras mantêm as rotas operacionais correspondentes,
+  e as duas perguntas incluem a guarda para conteúdo de terceiros em `state`.
 
 ## Assumptions
 
