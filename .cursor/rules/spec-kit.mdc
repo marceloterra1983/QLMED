@@ -17,4 +17,4 @@ QLMED uses Spec Kit as the only feature-governance engine. GSD stays disabled.
 
 Work in a task-specific git worktree. Do not edit an unrelated dirty checkout.
 
-If this worktree has no `graphify-out/graph.json`, query the canonical checkout graph with `--graph ../app/graphify-out/graph.json` or `--graph ../app-dev/graphify-out/graph.json` before exploring code.
+If this worktree has no `graphify-out/graph.json`, query the canonical checkout graph with `--graph /home/marce/qlmed/app/graphify-out/graph.json` before exploring code.
