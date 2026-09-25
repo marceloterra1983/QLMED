@@ -37,8 +37,8 @@ docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "qlmed|
 ```
 
 ### 4. Compare commits
-- Read `~/QLMED/production/app/.deploy-meta.env` for `QLMED_BUILD_COMMIT_SHA`
-- Compare with `git rev-parse HEAD` in `~/QLMED/dev/`
+- Read `/home/marce/qlmed/production/.deploy-meta.env` for `QLMED_BUILD_COMMIT_SHA` (written by `scripts/publish-local.sh`)
+- Compare with `git rev-parse HEAD` in `~/qlmed/app/`
 - Show diff summary if they differ
 
 ### 5. DB proxy check
