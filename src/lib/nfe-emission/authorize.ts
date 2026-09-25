@@ -30,6 +30,8 @@ import { assertConsignacaoLots, preferredLotsFromItems } from './rastro';
 
 const log = createLogger('nfe-emission');
 
+// Chamado com `void`: o conselho é opcional e nunca pode segurar a resposta da
+// emissão. Não rejeita — os erros ficam no log.
 async function runSefazFollowup(
   followup: typeof adviseSefazFollowup,
   input: Parameters<typeof adviseSefazFollowup>[0],
@@ -282,7 +284,7 @@ export async function authorizeInvoiceEmission(
       where: { id: emission.id },
       data: { sefazStat: result.cStat || null, sefazMotivo: result.xMotivo },
     });
-    await runSefazFollowup(followup, {
+    void runSefazFollowup(followup, {
       outcome: 'pending',
       cStat: result.cStat || '',
       xMotivo: result.xMotivo,
@@ -308,7 +310,7 @@ export async function authorizeInvoiceEmission(
         ...(denied ? {} : { number: null, accessKey: null }),
       },
     });
-    await runSefazFollowup(followup, {
+    void runSefazFollowup(followup, {
       outcome: 'rejected',
       cStat: result.cStat,
       xMotivo: result.xMotivo,
@@ -442,7 +444,7 @@ async function resolveSubmittedEmission(
       where: { id: ctx.emissionId },
       data: { status: 'rejected', sefazStat: consulta.cStat, sefazMotivo: consulta.xMotivo },
     });
-    await runSefazFollowup(followup, {
+    void runSefazFollowup(followup, {
       outcome: 'rejected',
       cStat: consulta.cStat,
       xMotivo: consulta.xMotivo,
@@ -456,7 +458,7 @@ async function resolveSubmittedEmission(
     where: { id: ctx.emissionId },
     data: { sefazStat: consulta.cStat || null, sefazMotivo: consulta.xMotivo },
   });
-  await runSefazFollowup(followup, {
+  void runSefazFollowup(followup, {
     outcome: 'pending',
     cStat: consulta.cStat || '',
     xMotivo: consulta.xMotivo,

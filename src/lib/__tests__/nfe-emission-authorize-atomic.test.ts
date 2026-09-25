@@ -478,4 +478,25 @@ describe('authorizeInvoiceEmission — achados da re-auditoria', () => {
     expect(authorized.status).toBe('authorized');
     expect(silent).not.toHaveBeenCalled();
   });
+
+  it('follow-up que nunca resolve não segura a resposta da emissão', async () => {
+    const authorize = await loadAuthorize();
+    const hang = vi.fn(() => new Promise<never>(() => {}));
+
+    emission = freshEmission();
+    const rejected = await authorize(COMPANY_ID, EMISSION_ID, {
+      send: vi.fn(async () => ({ outcome: 'rejected' as const, cStat: '539', xMotivo: 'Duplicidade' })),
+      followup: hang,
+    });
+    expect(rejected).toEqual({ status: 'rejected', cStat: '539', xMotivo: 'Duplicidade' });
+
+    emission = freshEmission();
+    invoices = [];
+    const pending = await authorize(COMPANY_ID, EMISSION_ID, {
+      send: vi.fn(async () => ({ outcome: 'pending' as const, cStat: '105', xMotivo: 'Em processamento' })),
+      followup: hang,
+    });
+    expect(pending.status).toBe('pending');
+    expect(hang).toHaveBeenCalledTimes(2);
+  });
 });
