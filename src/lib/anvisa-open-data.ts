@@ -159,7 +159,7 @@ function findHeaderIndex(
   return index >= 0 ? index : fallback;
 }
 
-function parseHeader(columns: string[]): ParsedHeader | null {
+export function parseHeader(columns: string[]): ParsedHeader | null {
   const headers = columns.map((column) => normalizeHeader(column));
 
   const registrationIndex = findHeaderIndex(headers, (header) => {
@@ -169,6 +169,9 @@ function parseHeader(columns: string[]): ParsedHeader | null {
   });
 
   const productNameIndex = findHeaderIndex(headers, (header) => {
+    // Nome real no CSV atual: NO_PRODUTO (normalizado → no_produto). Os CSVs
+    // antigos usavam NOME_PRODUTO ou alguma combinação "produto" + "nome".
+    if (header === 'no_produto') return true;
     if (header.includes('nome_produto')) return true;
     return header.includes('produto') && header.includes('nome');
   });
@@ -181,7 +184,15 @@ function parseHeader(columns: string[]): ParsedHeader | null {
     return header.includes('detentor') || header.includes('razao_social') || header.includes('empresa');
   });
   const processIndex = findHeaderIndex(headers, (header) => header.includes('processo'));
-  const statusIndex = findHeaderIndex(headers, (header) => header.includes('situacao') || header.includes('status'));
+  // Os CSVs atuais têm SITUACAO_REGISTRO (produtos para saúde) e
+  // VALIDADE_SITUACAO (medicamentos). Colunas como CO_SITUACAO_ASSUNTO_DOC vêm
+  // antes e NÃO são o status do registro — por isso casamos o nome exato, não
+  // qualquer header que contenha "situacao".
+  const statusIndex = findHeaderIndex(headers, (header) => {
+    if (header === 'situacao_registro' || header === 'validade_situacao') return true;
+    if (header === 'situacao') return true;
+    return header.includes('status');
+  });
 
   return {
     registrationIndex,
