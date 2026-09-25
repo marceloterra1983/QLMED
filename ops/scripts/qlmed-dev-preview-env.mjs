@@ -1,5 +1,13 @@
 import { existsSync } from 'node:fs';
 
+/** Neste Omarchy o pacote é `/usr/bin/chromium`. A imagem Docker usa `chromium-browser`. */
+export const PREVIEW_CHROME_CANDIDATES = [
+  '/usr/bin/chromium',
+  '/usr/bin/chromium-browser',
+  '/usr/bin/google-chrome',
+  '/usr/bin/google-chrome-stable',
+];
+
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1']);
 
 export const DEFAULT_DEV_ENV_CANDIDATES = [
@@ -60,6 +68,21 @@ export function assertPreviewDatabaseUrl(rawUrl) {
     throw new Error('preview exige database postgres (ADR-0020)');
   }
   return parsed;
+}
+
+/**
+ * Usa o caminho do env se o arquivo existe. Se o .env de dev aponta para o
+ * binário da imagem Docker e ele não está neste host, cai no Chromium local.
+ */
+export function resolvePreviewChrome(configured, exists = existsSync) {
+  const path = configured?.trim();
+  if (path && exists(path)) return path;
+  for (const candidate of PREVIEW_CHROME_CANDIDATES) {
+    if (exists(candidate)) return candidate;
+  }
+  throw new Error(
+    'preview: Chromium ausente. PUPPETEER_EXECUTABLE_PATH não aponta para um binário neste host.',
+  );
 }
 
 export function resolvePreviewOrigin({ override, tailscaleIp } = {}) {

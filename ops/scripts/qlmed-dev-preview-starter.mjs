@@ -9,11 +9,13 @@
  * DATABASE_URL: túnel 127.0.0.1:5435 → vps2 postgres (ADR-0020).
  * Override: QLMED_PREVIEW_CWD, QLMED_PREVIEW_ENV, QLMED_PREVIEW_ORIGIN
  */
+import { existsSync } from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
 import {
   DEFAULT_DEV_ENV_CANDIDATES,
   assertPreviewDatabaseUrl,
   pickEnvFile,
+  resolvePreviewChrome,
   resolvePreviewOrigin,
 } from './qlmed-dev-preview-env.mjs';
 
@@ -39,6 +41,8 @@ const origin = resolvePreviewOrigin({
 const cwd =
   process.env.QLMED_PREVIEW_CWD || '/home/marce/qlmed/.worktrees/preview';
 
+const chrome = resolvePreviewChrome(process.env.PUPPETEER_EXECUTABLE_PATH, existsSync);
+
 const env = {
   ...process.env,
   NEXTAUTH_URL: origin,
@@ -46,6 +50,7 @@ const env = {
   HOST: '0.0.0.0',
   DAILY_SUMMARY_NATIVE: '0',
   QLMED_DISABLE_BACKGROUND_SERVICES: 'true',
+  PUPPETEER_EXECUTABLE_PATH: chrome,
 };
 
 const child = spawn('npx', ['next', 'dev', '-H', '0.0.0.0', '-p', '3002'], {

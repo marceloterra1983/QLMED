@@ -3,6 +3,7 @@ import {
   assertLoopbackDatabaseUrl,
   assertPreviewDatabaseUrl,
   pickEnvFile,
+  resolvePreviewChrome,
   resolvePreviewOrigin,
 } from './qlmed-dev-preview-env.mjs';
 
@@ -44,6 +45,20 @@ describe('qlmed-dev-preview-env', () => {
         tailscaleIp: '100.68.84.119',
       }),
     ).toBe('http://example.local:3002');
+  });
+
+  it('mantém o Chromium do env quando o arquivo existe', () => {
+    const exists = (path) => path === '/usr/bin/chromium-browser';
+    expect(resolvePreviewChrome('/usr/bin/chromium-browser', exists)).toBe(
+      '/usr/bin/chromium-browser',
+    );
+  });
+
+  it('troca o caminho da imagem Docker pelo Chromium deste host', () => {
+    const exists = (path) => path === '/usr/bin/chromium';
+    expect(resolvePreviewChrome('/usr/bin/chromium-browser', exists)).toBe(
+      '/usr/bin/chromium',
+    );
   });
 
   it('pickEnvFile ignora caminhos inexistentes', () => {
