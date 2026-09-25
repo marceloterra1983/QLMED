@@ -12,7 +12,7 @@ Activate when the user asks to check deploy status, verify production health, co
 ## Validation steps
 
 ### 1. Git status
-- Verify `~/QLMED/dev/` has no uncommitted changes
+- Verify `~/qlmed/app/` has no uncommitted changes
 - Check current branch is `main`
 - Compare local HEAD with `origin/main`
 
