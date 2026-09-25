@@ -10,8 +10,8 @@ URL: `http://100.68.84.119:3002` (Tailscale deste `dev`; confirme com `tailscale
 Unit: `qlmed-dev-preview.service` (user)  
 Starter: `/home/marce/qlmed/app/ops/scripts/qlmed-dev-preview-starter.mjs`
 
-Toda sessão de IA **deve** usar este preview para validar UI **antes** de merge/deploy.
-Não pergunte se quer preview; use-o. Não suba outro Next.
+Valide UI neste preview **antes** de merge/deploy (detalhe: AGENTS.md § Preview DEV canônico).
+Não suba outro Next.
 
 ## Regras
 
