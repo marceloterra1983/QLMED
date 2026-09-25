@@ -79,4 +79,37 @@ describe('SPEC-085 — editor Orçamentos', () => {
     });
     expect(screen.queryByRole('button', { name: /KIT AUTOTRANSFUSÃO/ })).toBeNull();
   });
+
+  it('mostra o nome abreviado antes da razão social', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          clientes: [{
+            cnpj: '11111111000111',
+            name: 'ASSOCIACAO HOSPITALAR EXEMPLO',
+            shortName: 'Santa Casa',
+            ie: null,
+            street: null,
+            number: null,
+            district: null,
+            city: null,
+            state: null,
+            zip: null,
+          }],
+        }),
+      }),
+    );
+    render(<OrcamentoEditor />);
+    fireEvent.change(screen.getByPlaceholderText('Nome abreviado, razão ou CNPJ'), {
+      target: { value: 'santa' },
+    });
+    const button = await screen.findByRole('button', { name: /Santa Casa/ });
+    const text = button.textContent || '';
+    expect(text.indexOf('Santa Casa')).toBeLessThan(text.indexOf('ASSOCIACAO'));
+    fireEvent.click(button);
+    expect(screen.getByText('Santa Casa')).toBeTruthy();
+    expect(screen.getByText('ASSOCIACAO HOSPITALAR EXEMPLO')).toBeTruthy();
+  });
 });

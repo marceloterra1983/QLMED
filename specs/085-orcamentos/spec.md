@@ -119,7 +119,7 @@ Operador reabre um orçamento da lista, ajusta itens e reimprime. Duplicar cria 
 
 ### Dados de cliente e produto
 
-- **FR-005**: Cliente vem do acervo de **clientes** (destinatários de NF-e emitida + ficha fiscal + override de endereço). Snapshot no orçamento: nome, CNPJ, IE, endereço (logradouro, número, bairro, município, UF, CEP), código interno se existir. Mudança posterior no cadastro **não** altera orçamento já gravado até o operador reescolher o cliente.
+- **FR-005**: Cliente vem do acervo de **clientes** (destinatários de NF-e emitida + ficha fiscal + override de endereço). Snapshot no orçamento: nome, CNPJ, IE, endereço (logradouro, número, bairro, município, UF, CEP), código interno se existir. Mudança posterior no cadastro **não** altera orçamento já gravado até o operador reescolher o cliente. A busca casa nome abreviado (`ContactNickname.shortName`), razão social e CNPJ, sem acento. Quem casa pelo nome abreviado aparece antes de quem casa só pela razão. A lista e o resumo mostram o abreviado em destaque; o PDF continua com a razão social.
 - **FR-006**: Produto vem de `ProductRegistry` da empresa. Busca padrão: **em linha** (`outOfLine` nulo ou falso), por descrição/código/NCM/ANVISA. Ao escolher, copia código (`codigo` ou `code`), descrição, R.V.S. (`anvisaCode`), NCM, unidade e sugere preço = último preço de venda (`aggLastSalePrice`) ou, se ausente, último preço de compra (`aggLastPrice`). O operador pode editar descrição e preço da linha (snapshot).
 - **FR-007**: Valores monetários e totais usam Decimal half-up 2 casas (`src/lib/money.ts`). Quantidade admite até 4 casas. Proibido `number` IEEE-754 como fonte de verdade do total persistido.
 
