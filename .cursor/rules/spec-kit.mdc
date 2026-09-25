@@ -15,6 +15,6 @@ QLMED uses Spec Kit as the only feature-governance engine. GSD stays disabled.
 4. Use the project skills in `.cursor/skills/speckit-*` (same content as `.agents/skills/speckit-*`).
 5. Do not bump the Spec Kit pin on `main`. Upgrade only on a disposable branch, keep QLMED customizations, then `npm run docs:validate`.
 
-Work in a task-specific git worktree. Do not edit an unrelated dirty checkout.
+Work in a task-specific git worktree — ver AGENTS.md § AI workflow posture. Do not edit an unrelated dirty checkout.
 
 If this worktree has no `graphify-out/graph.json`, query the canonical checkout graph with `--graph /home/marce/qlmed/app/graphify-out/graph.json` before exploring code.
