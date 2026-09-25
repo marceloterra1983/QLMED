@@ -33,7 +33,8 @@ Activate when working with Prisma schema changes, database migrations, SQL queri
    ```
 5. **Suggest a backup** before destructive schema changes or any human-gated deploy:
    ```bash
-   docker exec <qlmed-db-container> pg_dump -U postgres postgres | gzip > ~/QLMED/backups/pre-change-$(date +%Y%m%d-%H%M%S).sql.gz
+   mkdir -p ~/qlmed/backups
+   docker exec <qlmed-db-container> pg_dump -U postgres postgres | gzip > ~/qlmed/backups/pre-change-$(date +%Y%m%d-%H%M%S).sql.gz
    ```
 
 ### Safe workflow for schema changes
