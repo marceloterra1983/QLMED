@@ -22,7 +22,7 @@ Activate when the user mentions Sefaz errors, NF-e rejection codes, SOAP faults,
 ## Debug checklist
 
 ### Sefaz SOAP errors
-1. Check certificate expiration: `CertificateConfig` table, `expiresAt` field
+1. Check certificate expiration: `CertificateConfig` table, `validTo` field
 2. Verify `DATABASE_URL` is accessible and `Company` has valid CNPJ
 3. Common Sefaz status codes:
    - `137` — NF-e não encontrada
