@@ -47,4 +47,36 @@ describe('SPEC-085 — editor Orçamentos', () => {
       if (original) cryptoObj.randomUUID = original;
     }
   });
+
+  it('adiciona o produto escolhido e fecha a lista', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          produtos: [{
+            id: 'p1',
+            code: '4326202',
+            description: 'KIT AUTOTRANSFUSÃO',
+            ncm: '90183929',
+            unit: 'UN',
+            rvs: '80102511537',
+            unitPrice: '3800.00',
+          }],
+        }),
+      }),
+    );
+    render(<OrcamentoEditor />);
+    expect(screen.queryByText('KIT AUTOTRANSFUSÃO')).toBeNull();
+    fireEvent.focus(screen.getByPlaceholderText(/Código, descrição/));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /KIT AUTOTRANSFUSÃO/ })).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /KIT AUTOTRANSFUSÃO/ }));
+    await waitFor(() => {
+      const code = screen.getByLabelText('Código do item') as HTMLInputElement;
+      expect(code.value).toBe('4326202');
+    });
+    expect(screen.queryByRole('button', { name: /KIT AUTOTRANSFUSÃO/ })).toBeNull();
+  });
 });
