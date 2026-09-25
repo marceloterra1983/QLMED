@@ -53,7 +53,9 @@ Editor+. 201 novo draft com próximo número.
 
 ## GET /api/orcamentos/clientes?q=&limit=20
 
-`{ "clientes": [{ "cnpj", "name", "ie", "street", "number", "district", "city", "state", "zip" }] }`
+`{ "clientes": [{ "cnpj", "name", "shortName", "ie", "street", "number", "district", "city", "state", "zip" }] }`
+
+`shortName` é o nome abreviado do cadastro, ou `null`. A ordem já vem com o abreviado na frente quando o termo casa nele. `name` continua a razão social gravada no orçamento.
 
 ## GET /api/orcamentos/produtos?q=&lineStatus=active&limit=20
 

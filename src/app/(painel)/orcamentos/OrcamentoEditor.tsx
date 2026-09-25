@@ -17,6 +17,7 @@ import { looseDecimal, moneyText, quoteTotalsOf, todayYmd } from '@/lib/orcament
 type ClienteHit = {
   cnpj: string;
   name: string;
+  shortName?: string | null;
   ie: string | null;
   street: string | null;
   number: string | null;
@@ -112,6 +113,7 @@ export default function OrcamentoEditor({ quoteId }: { quoteId?: string }) {
   const [numberLabel, setNumberLabel] = useState<string | null>(null);
   const [issuedAt, setIssuedAt] = useState(todayYmd());
   const [clienteQ, setClienteQ] = useState('');
+  const [clienteApelido, setClienteApelido] = useState<string | null>(null);
   const [clientes, setClientes] = useState<ClienteHit[]>([]);
   const [produtoQ, setProdutoQ] = useState('');
   const [produtoOpen, setProdutoOpen] = useState(false);
@@ -365,7 +367,7 @@ export default function OrcamentoEditor({ quoteId }: { quoteId?: string }) {
                 className={FIELD_CONTROL_CLS}
                 value={clienteQ}
                 onChange={(e) => setClienteQ(e.target.value)}
-                placeholder="Nome ou CNPJ"
+                placeholder="Nome abreviado, razão ou CNPJ"
               />
             </Field>
           ) : null}
@@ -378,11 +380,15 @@ export default function OrcamentoEditor({ quoteId }: { quoteId?: string }) {
                     className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
                     onClick={() => {
                       setForm((prev) => ({ ...prev, ...applyCliente(c) }));
+                      setClienteApelido(c.shortName?.trim() || null);
                       setClienteQ('');
                       setClientes([]);
                     }}
                   >
-                    <span className="font-semibold">{c.name}</span>
+                    <span className="font-semibold">{c.shortName?.trim() || c.name}</span>
+                    {c.shortName?.trim() && c.shortName.trim() !== c.name ? (
+                      <span className="block text-xs text-slate-500">{c.name}</span>
+                    ) : null}
                     <span className="block text-xs text-slate-500">{c.cnpj}</span>
                   </button>
                 </li>
@@ -390,7 +396,12 @@ export default function OrcamentoEditor({ quoteId }: { quoteId?: string }) {
             </ul>
           ) : null}
           <p className="text-sm">
-            <span className="font-semibold">{form.customerName || 'Nenhum cliente selecionado'}</span>
+            <span className="font-semibold">
+              {clienteApelido || form.customerName || 'Nenhum cliente selecionado'}
+            </span>
+            {clienteApelido && form.customerName && clienteApelido !== form.customerName ? (
+              <span className="block text-slate-500">{form.customerName}</span>
+            ) : null}
             {form.customerCnpj ? (
               <span className="block text-slate-500">{form.customerCnpj}</span>
             ) : null}
