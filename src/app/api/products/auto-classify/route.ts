@@ -97,8 +97,9 @@ interface Product {
 
 /**
  * POST /api/products/auto-classify
- * Analyzes all products and fills in missing ANVISA, type, subtype, manufacturer
+ * Analyzes all products and fills in missing type, subtype, manufacturer
  * by looking at similar products and using NCM/description heuristics.
+ * Nunca grava registro ANVISA: produto "parecido" não é evidência de registro.
  * Body: { dryRun?: boolean }
  */
 export async function POST(req: Request) {
@@ -263,8 +264,8 @@ export async function POST(req: Request) {
         }
       }
 
-      // ── Strategy 2: Description similarity → copy ANVISA/type ──
-      if (!p.anvisa || !p.productType) {
+      // ── Strategy 2: Description similarity → copy type ──
+      if (!p.productType) {
         const pTokens = descTokensMap.get(p.key) || [];
         if (pTokens.length >= 2) {
           let bestMatch: Product | null = null;
@@ -273,8 +274,7 @@ export async function POST(req: Request) {
           for (const other of products) {
             if (other.key === p.key) continue;
             // Must have something we need
-            const hasNeeded = (!p.anvisa && other.anvisa) || (!p.productType && other.productType);
-            if (!hasNeeded) continue;
+            if (!other.productType) continue;
 
             const oTokens = descTokensMap.get(other.key) || [];
             if (oTokens.length < 2) continue;
@@ -292,7 +292,6 @@ export async function POST(req: Request) {
             }
           }
 
-          // Require high similarity for ANVISA (0.75), lower for type (0.55)
           if (bestMatch && bestScore >= 0.55) {
             if (!p.productType && bestMatch.productType && !fieldsToSet.product_type) {
               fieldsToSet.product_type = bestMatch.productType;
@@ -301,17 +300,12 @@ export async function POST(req: Request) {
               }
               reasons.push(`tipo inferido por descrição similar (${(bestScore * 100).toFixed(0)}% "${bestMatch.description.slice(0, 40)}")`);
             }
-            if (!p.anvisa && bestMatch.anvisa && bestScore >= 0.75) {
-              fieldsToSet.anvisa_code = bestMatch.anvisa;
-              fieldsToSet.anvisa_source = 'auto_infer';
-              reasons.push(`ANVISA inferido por descrição similar (${(bestScore * 100).toFixed(0)}% "${bestMatch.description.slice(0, 40)}")`);
-            }
           }
         }
       }
 
-      // ── Strategy 2b: Same supplier + similar description → copy type/ANVISA ──
-      if ((!p.productType || !p.anvisa) && p.supplierCnpj && !fieldsToSet.product_type) {
+      // ── Strategy 2b: Same supplier + similar description → copy type ──
+      if (!p.productType && p.supplierCnpj && !fieldsToSet.product_type) {
         const supplierProducts = bySupplier.get(p.supplierCnpj) || [];
         if (supplierProducts.length >= 2) {
           const pTokens = descTokensMap.get(p.key) || [];
@@ -321,8 +315,7 @@ export async function POST(req: Request) {
 
             for (const other of supplierProducts) {
               if (other.key === p.key) continue;
-              const hasNeeded = (!p.productType && other.productType) || (!p.anvisa && other.anvisa && !fieldsToSet.anvisa_code);
-              if (!hasNeeded) continue;
+              if (!other.productType) continue;
               const oTokens = descTokensMap.get(other.key) || [];
               if (oTokens.length < 2) continue;
               let score = dice(pTokens, oTokens);
@@ -338,11 +331,6 @@ export async function POST(req: Request) {
                   fieldsToSet.product_subtype = bestMatch.productSubtype;
                 }
                 reasons.push(`tipo copiado de produto do mesmo fornecedor ${p.supplierName || ''} (${(bestScore * 100).toFixed(0)}% "${bestMatch.description.slice(0, 30)}")`);
-              }
-              if (!p.anvisa && !fieldsToSet.anvisa_code && bestMatch.anvisa && bestScore >= 0.65) {
-                fieldsToSet.anvisa_code = bestMatch.anvisa;
-                fieldsToSet.anvisa_source = 'auto_infer';
-                reasons.push(`ANVISA copiado de produto do mesmo fornecedor (${(bestScore * 100).toFixed(0)}%)`);
               }
             }
           }
@@ -392,31 +380,6 @@ export async function POST(req: Request) {
             }
             reasons.push(`tipo inferido por palavra-chave na descrição`);
             break;
-          }
-        }
-      }
-
-      // ── Strategy 5: Same code prefix → copy ANVISA ──
-      if (!p.anvisa && !fieldsToSet.anvisa_code && p.code) {
-        // Extract code prefix (digits before last 1-2 chars that vary)
-        const codeNorm = norm(p.code);
-        if (codeNorm.length >= 4) {
-          const prefix = codeNorm.slice(0, Math.max(4, codeNorm.length - 2));
-          for (const other of products) {
-            if (other.key === p.key || !other.anvisa || !other.code) continue;
-            const otherNorm = norm(other.code);
-            if (otherNorm.startsWith(prefix) && otherNorm.length === codeNorm.length) {
-              // Same code structure, same prefix — likely same product family
-              // Additional check: descriptions must share at least 50% tokens
-              const pTok = descTokensMap.get(p.key) || [];
-              const oTok = descTokensMap.get(other.key) || [];
-              if (dice(pTok, oTok) >= 0.5) {
-                fieldsToSet.anvisa_code = other.anvisa;
-                fieldsToSet.anvisa_source = 'auto_infer';
-                reasons.push(`ANVISA copiado de produto com código similar (${other.code})`);
-                break;
-              }
-            }
           }
         }
       }
@@ -498,8 +461,6 @@ export async function POST(req: Request) {
 
     // ── Apply updates ──
     const SNAKE_TO_PRISMA: Record<string, string> = {
-      anvisa_code: 'anvisaCode',
-      anvisa_source: 'anvisaSource',
       product_type: 'productType',
       product_subtype: 'productSubtype',
       anvisa_manufacturer: 'anvisaManufacturer',
@@ -530,7 +491,6 @@ export async function POST(req: Request) {
       updatesApplied: dryRun ? 0 : applied,
       dryRun,
       byField: {
-        anvisa: updates.filter((u) => u.fields.anvisa_code).length,
         productType: updates.filter((u) => u.fields.product_type).length,
         productSubtype: updates.filter((u) => u.fields.product_subtype).length,
         manufacturer: updates.filter((u) => u.fields.anvisa_manufacturer).length,

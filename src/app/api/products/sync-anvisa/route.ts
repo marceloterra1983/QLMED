@@ -50,6 +50,7 @@ export async function POST(req: Request) {
     let fromXml = 0;
     let fromIssued = 0;
     let fromCatalog = 0;
+    let nameSuggestions = 0;
 
     for (const product of products) {
       processed += 1;
@@ -100,7 +101,19 @@ export async function POST(req: Request) {
             code: product.code,
             description: product.description,
           });
-          if (match) {
+          if (match?.method === 'catalog_name') {
+            // Similaridade de nome não é evidência de registro: sem revisão
+            // humana vira registro ANVISA errado na nota. Só sugere.
+            nameSuggestions += 1;
+            log.info(
+              {
+                productKey: product.productKey,
+                suggestion: match.registration,
+                confidence: match.confidence,
+              },
+              'ANVISA sugerido por nome (não gravado)',
+            );
+          } else if (match) {
             normalizedAnvisa = normalizeAnvisaCode(match.registration);
             matchMethod = match.method;
             matchConfidence = match.confidence;
@@ -116,7 +129,7 @@ export async function POST(req: Request) {
 
       if (matchMethod === 'xml') fromXml += 1;
       else if (matchMethod === 'issued_nfe') fromIssued += 1;
-      else if (matchMethod === 'catalog_code_exact' || matchMethod === 'catalog_name') fromCatalog += 1;
+      else if (matchMethod === 'catalog_code_exact') fromCatalog += 1;
 
       const currentCode = normalizeAnvisaCode(product.anvisaCode);
       const shouldUpdateAnvisa =
@@ -157,6 +170,7 @@ export async function POST(req: Request) {
         fromXml,
         fromIssued,
         fromCatalog,
+        nameSuggestions,
       },
     });
   } catch (error) {
