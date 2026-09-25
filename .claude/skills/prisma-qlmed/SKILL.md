@@ -8,7 +8,7 @@ allowed-tools: Read, Grep, Bash, Glob, Edit, Write
 # Prisma QLMED - Schema & Database Conventions
 
 ## Stack
-- Prisma 7.8.0 + PostgreSQL 18
+- Prisma 7.10.0 + PostgreSQL 18
 - Schema: `prisma/schema.prisma`
 - DB: PostgreSQL in container `qlmed-db`; host access is bound to `127.0.0.1:5432`
 
