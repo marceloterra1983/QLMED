@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   decideOutOfScopeShadow,
+  isLoopbackBaseUrl,
   isOutOfScopeShadowEnabled,
   isPatientData,
   outOfScopeShadowQuestions,
@@ -34,6 +35,15 @@ describe('outOfScopeShadowState / questions / guard', () => {
     expect(isOutOfScopeShadowEnabled({ enabled: true })).toBe(true);
     expect(isOutOfScopeShadowEnabled({ enabled: false })).toBe(false);
   });
+
+  it('isLoopbackBaseUrl aceita só loopback (127.0.0.1 / localhost / ::1)', () => {
+    expect(isLoopbackBaseUrl('http://127.0.0.1:8787')).toBe(true);
+    expect(isLoopbackBaseUrl('http://localhost:8787')).toBe(true);
+    expect(isLoopbackBaseUrl('http://[::1]:8787')).toBe(true);
+    expect(isLoopbackBaseUrl('https://api.example.com')).toBe(false);
+    expect(isLoopbackBaseUrl('http://10.0.0.1:8787')).toBe(false);
+    expect(isLoopbackBaseUrl('not a url')).toBe(false);
+  });
 });
 
 describe('decideOutOfScopeShadow', () => {
@@ -61,6 +71,37 @@ describe('decideOutOfScopeShadow', () => {
     expect(body.model).toBe('jev-1.13.0');
     expect(body.state.supplier_name).toBe('AUTOBEL');
     expect(body.questions.out_of_scope.type).toBe('noul');
+  });
+
+  it('usa a api key de TYPESAFE_API_KEY / deps.apiKey no header', async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
+      ({ ok: true, status: 200, json: async () => ({ answers: { out_of_scope: { noul: 1, confidence: 1 } } }) }) as unknown as Response,
+    );
+    await decideOutOfScopeShadow(
+      { state: outOfScopeShadowState({ supplierName: 'AUTOBEL', description: 'OLEO' }), questions: outOfScopeShadowQuestions() },
+      { baseUrl: 'http://127.0.0.1:8787', apiKey: 'sekret', fetchImpl },
+    );
+    const [, init] = fetchImpl.mock.calls[0];
+    expect((init?.headers as Record<string, string>).Authorization).toBe('Bearer sekret');
+  });
+
+  it('fallback: sem TYPESAFE_API_KEY usa "local"', async () => {
+    const previous = process.env.TYPESAFE_API_KEY;
+    delete process.env.TYPESAFE_API_KEY;
+    try {
+      const fetchImpl = vi.fn<typeof fetch>(async () =>
+        ({ ok: true, status: 200, json: async () => ({ answers: { out_of_scope: { noul: 1 } } }) }) as unknown as Response,
+      );
+      await decideOutOfScopeShadow(
+        { state: outOfScopeShadowState({ supplierName: 'AUTOBEL', description: 'OLEO' }), questions: outOfScopeShadowQuestions() },
+        { baseUrl: 'http://127.0.0.1:8787', fetchImpl },
+      );
+      const [, init] = fetchImpl.mock.calls[0];
+      expect((init?.headers as Record<string, string>).Authorization).toBe('Bearer local');
+    } finally {
+      if (previous === undefined) delete process.env.TYPESAFE_API_KEY;
+      else process.env.TYPESAFE_API_KEY = previous;
+    }
   });
 
   it('lança em HTTP não-ok', async () => {
@@ -128,5 +169,57 @@ describe('recordOutOfScopeShadow', () => {
     );
     expect(decide).not.toHaveBeenCalled();
     expect(lines).toHaveLength(0);
+  });
+
+  it('fail-closed: base externa não chama fetch e grava base_url_nao_local', async () => {
+    const lines: string[] = [];
+    const fetchImpl = vi.fn<typeof fetch>();
+    await recordOutOfScopeShadow(
+      { supplierName: 'AUTOBEL', description: 'OLEO' },
+      { enabled: true, baseUrl: 'https://api.example.com', fetchImpl, appendLine: async (l) => { lines.push(l); } },
+    );
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(lines).toHaveLength(1);
+    const record = JSON.parse(lines[0]);
+    expect(record.error).toBe('base_url_nao_local');
+    expect(record.noul).toBeNull();
+  });
+
+  it('no-op com env ausente (nada é chamado nem gravado)', async () => {
+    const previous = process.env.TYPESAFE_BASE_URL;
+    delete process.env.TYPESAFE_BASE_URL;
+    try {
+      const lines: string[] = [];
+      const fetchImpl = vi.fn<typeof fetch>();
+      await recordOutOfScopeShadow(
+        { supplierName: 'AUTOBEL', description: 'OLEO' },
+        { fetchImpl, appendLine: async (l) => { lines.push(l); } },
+      );
+      expect(fetchImpl).not.toHaveBeenCalled();
+      expect(lines).toHaveLength(0);
+    } finally {
+      if (previous === undefined) delete process.env.TYPESAFE_BASE_URL;
+      else process.env.TYPESAFE_BASE_URL = previous;
+    }
+  });
+
+  it('timeout/abort gera record com error (fail-open)', async () => {
+    const lines: string[] = [];
+    const fetchImpl = vi.fn<typeof fetch>((_url, init) =>
+      new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () =>
+          reject(new DOMException('The operation was aborted.', 'AbortError')),
+        );
+      }),
+    );
+    await recordOutOfScopeShadow(
+      { supplierName: 'AUTOBEL', description: 'OLEO' },
+      { enabled: true, baseUrl: 'http://127.0.0.1:8787', timeoutMs: 1, fetchImpl, appendLine: async (l) => { lines.push(l); } },
+    );
+    expect(fetchImpl).toHaveBeenCalled();
+    expect(lines).toHaveLength(1);
+    const record = JSON.parse(lines[0]);
+    expect(record.error).toBeTruthy();
+    expect(record.noul).toBeNull();
   });
 });
