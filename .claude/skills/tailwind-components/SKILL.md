@@ -166,7 +166,7 @@ export default function SectionPage() {
 ## Rules
 1. **Language**: All UI text in Portuguese (pt-BR)
 2. **Responsive**: Mobile-first. Padrão B usa `MobileFilterWrapper`; padrão A (catálogo em memória) fica sempre visível, como Controle.
-3. **Virtual scrolling**: Use `@tanstack/react-virtual` for lists with 100+ items
+3. **Long lists**: use server-side pagination (padrão B) or in-memory filtering (padrão A); do not add a virtualization dependency without it being in the lockfile (run npm ls <pkg> first; see AGENTS.md)
 4. **No component libraries**: Do NOT install shadcn/ui, Radix, Material UI, etc.
 5. **Buttons**: Always include hover state, transition, and appropriate size (`text-sm` + `px-4 py-2`)
 6. **Forms**: Use `@tailwindcss/forms` plugin styles, validate with Zod
