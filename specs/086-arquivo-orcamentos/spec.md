@@ -75,7 +75,7 @@ Job de coleta Graph percorre SentItems/search das três caixas, baixa anexos PDF
 ## Assumptions
 
 - Graph app-only já autorizado nas três caixas (mesmo tenant dos ofícios).
-- OneDrive montado neste host; produção vps2 só vê metadados até o PDF ser copiado para volume de runtime (fora desta entrega).
+- OneDrive montado neste host. Produção lê a mesma árvore relativa em `/app/storage/orcamentos` (volume `qlmed_app_storage`). O banco continua único: só o caminho, não uma segunda base.
 - PDFs que não parseiam ficam no disco e no manifest, sem linha no banco.
 
 ## Out of scope

@@ -11,10 +11,34 @@ export const QUOTE_ARCHIVE_ROOT = '/home/marce/Cloud/onedrive/0 - ORÇAMENTOS';
 
 export type QuoteArchiveOrigin = 'email' | 'arquivo';
 
+function archiveStorageRoot(): string {
+  return process.env.QUOTE_ARCHIVE_STORAGE_DIR || '/app/storage/orcamentos';
+}
+
 function isPathInsideRoot(filePath: string): boolean {
   const resolved = path.resolve(filePath);
   const root = path.resolve(QUOTE_ARCHIVE_ROOT);
   return resolved === root || resolved.startsWith(`${root}${path.sep}`);
+}
+
+export function quoteArchiveRelativePath(filePath: string): string | null {
+  const root = path.resolve(QUOTE_ARCHIVE_ROOT);
+  const resolved = path.resolve(filePath);
+  if (resolved !== root && !resolved.startsWith(`${root}${path.sep}`)) return null;
+  const rel = path.relative(root, resolved);
+  if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) return null;
+  return rel;
+}
+
+/** OneDrive nesta máquina, depois a cópia no volume de runtime da vps2. */
+export function quoteArchivePdfCandidates(filePath: string): string[] {
+  const rel = quoteArchiveRelativePath(filePath);
+  if (!rel) return [];
+  const storageRoot = path.resolve(archiveStorageRoot());
+  const mirrored = path.resolve(storageRoot, rel);
+  if (mirrored !== storageRoot && !mirrored.startsWith(`${storageRoot}${path.sep}`)) return [];
+  const original = path.resolve(QUOTE_ARCHIVE_ROOT, rel);
+  return original === mirrored ? [original] : [original, mirrored];
 }
 
 export function serializeArchive(row: {
