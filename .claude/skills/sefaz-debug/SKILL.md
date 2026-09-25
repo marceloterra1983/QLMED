@@ -35,7 +35,7 @@ Activate when the user mentions Sefaz errors, NF-e rejection codes, SOAP faults,
 4. Check if `SINGLE_COMPANY_CNPJ` matches the certificate's CNPJ
 
 ### NSDocs errors
-1. Verify `NsdocsConfig` has valid `token` for the company
+1. Verify `NsdocsConfig` has a valid `apiToken` for the company (stored encrypted, returned masked)
 2. Check `getNsdocsSyncWindow` in nsdocs-sync-window.ts
 3. HTTP 401 → token expired, needs refresh
 4. HTTP 429 → rate limited, check sync interval
