@@ -70,5 +70,7 @@ describe('SPEC-085 — página Orçamentos', () => {
     vi.stubGlobal('open', open);
     fireEvent.click(screen.getAllByText('IASEMT')[0]!);
     expect(open).toHaveBeenCalledWith('/api/orcamentos/arquivo/arc1/pdf', '_blank');
+    const pdfLink = screen.getByRole('link', { name: '00008318' });
+    expect(pdfLink.getAttribute('href')).toBe('/api/orcamentos/arquivo/arc1/pdf');
   });
 });

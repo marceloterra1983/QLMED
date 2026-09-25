@@ -10,6 +10,19 @@ export type QuoteLineInput = {
   discount?: string | number;
 };
 
+/** Aceita "1,5" e "1." enquanto o operador digita. Valor incompleto vira 0. */
+export function looseDecimal(value: string | number, fallback = '0'): string {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? String(value) : fallback;
+  }
+  const normalized = value.trim().replace(/\s/g, '').replace(',', '.');
+  if (!normalized || normalized === '.') return fallback;
+  const match = normalized.match(/^(\d+)(?:\.(\d*))?$/);
+  if (!match) return fallback;
+  if (match[2] === undefined || match[2] === '') return match[1];
+  return `${match[1]}.${match[2]}`;
+}
+
 function toQty(value: string | number): Decimal {
   return new Decimal(value).toDecimalPlaces(QTY, HALF_UP);
 }

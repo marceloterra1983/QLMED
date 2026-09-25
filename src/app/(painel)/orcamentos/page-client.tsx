@@ -255,7 +255,14 @@ export default function OrcamentosPageClient() {
                   <tr key={row.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
                     <td className="px-4 py-3 font-semibold">
                       {row.origin && row.origin !== 'qlmed' ? (
-                        <span>{row.numberLabel}</span>
+                        <a
+                          href={`/api/orcamentos/arquivo/${row.id}/pdf`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary dark:text-blue-400 hover:underline"
+                        >
+                          {row.numberLabel}
+                        </a>
                       ) : (
                         <Link href={`/orcamentos/${row.id}`} className="text-primary dark:text-blue-400 hover:underline">
                           {row.numberLabel}

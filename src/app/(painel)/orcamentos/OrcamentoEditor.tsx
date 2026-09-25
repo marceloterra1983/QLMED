@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import PageHeader from '@/components/PageHeader';
@@ -12,7 +12,7 @@ import Spinner from '@/components/ui/Spinner';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useRole } from '@/hooks/useRole';
 import { createClientRowId, formatCurrency } from '@/lib/utils';
-import { moneyText, quoteTotalsOf, todayYmd } from '@/lib/orcamentos/totals';
+import { looseDecimal, moneyText, quoteTotalsOf, todayYmd } from '@/lib/orcamentos/totals';
 
 type ClienteHit = {
   cnpj: string;
@@ -114,7 +114,9 @@ export default function OrcamentoEditor({ quoteId }: { quoteId?: string }) {
   const [clienteQ, setClienteQ] = useState('');
   const [clientes, setClientes] = useState<ClienteHit[]>([]);
   const [produtoQ, setProdutoQ] = useState('');
+  const [produtoOpen, setProdutoOpen] = useState(false);
   const [produtos, setProdutos] = useState<ProdutoHit[]>([]);
+  const produtoReq = useRef(0);
   const [includeOut, setIncludeOut] = useState(false);
   const [form, setForm] = useState<QuotePayload>({
     issuedAt: todayYmd(),
@@ -196,28 +198,48 @@ export default function OrcamentoEditor({ quoteId }: { quoteId?: string }) {
   }, [clienteQ]);
 
   useEffect(() => {
-    const q = produtoQ.trim();
+    if (!produtoOpen || locked) {
+      setProdutos([]);
+      return;
+    }
+    const requestId = ++produtoReq.current;
     const handle = window.setTimeout(() => {
+      const q = produtoQ.trim();
       const params = new URLSearchParams({ lineStatus: includeOut ? 'all' : 'active' });
       if (q) params.set('q', q);
       void fetch(`/api/orcamentos/produtos?${params}`)
         .then((r) => r.json())
-        .then((p: { produtos?: ProdutoHit[] }) => setProdutos(p.produtos || []))
-        .catch(() => setProdutos([]));
+        .then((p: { produtos?: ProdutoHit[] }) => {
+          if (requestId !== produtoReq.current) return;
+          setProdutos(p.produtos || []);
+        })
+        .catch(() => {
+          if (requestId === produtoReq.current) setProdutos([]);
+        });
     }, 250);
     return () => window.clearTimeout(handle);
-  }, [produtoQ, includeOut]);
+  }, [produtoQ, includeOut, produtoOpen, locked]);
 
   const totals = useMemo(() => {
+    const ready = lines.filter((line) => {
+      const qty = looseDecimal(line.quantity);
+      return qty !== '0';
+    });
+    if (ready.length === 0) return { subtotal: '0.00', total: '0.00', lines: new Map<string, string>() };
     try {
-      if (lines.length === 0) return { subtotal: '0.00', total: '0.00' };
       const t = quoteTotalsOf(
-        lines.map((l) => ({ quantity: l.quantity || '0', unitPrice: l.unitPrice || '0', discount: l.discount || '0' })),
-        form.freight || '0',
+        ready.map((line) => ({
+          quantity: looseDecimal(line.quantity),
+          unitPrice: looseDecimal(line.unitPrice),
+          discount: looseDecimal(line.discount),
+        })),
+        looseDecimal(form.freight),
       );
-      return { subtotal: moneyText(t.subtotal), total: moneyText(t.total) };
+      const byKey = new Map<string, string>();
+      ready.forEach((line, index) => byKey.set(line.key, moneyText(t.lineTotals[index])));
+      return { subtotal: moneyText(t.subtotal), total: moneyText(t.total), lines: byKey };
     } catch {
-      return { subtotal: '—', total: '—' };
+      return { subtotal: '—', total: '—', lines: new Map<string, string>() };
     }
   }, [lines, form.freight]);
 
@@ -424,7 +446,18 @@ export default function OrcamentoEditor({ quoteId }: { quoteId?: string }) {
               className={FIELD_CONTROL_CLS}
               value={produtoQ}
               disabled={locked}
-              onChange={(e) => setProdutoQ(e.target.value)}
+              onFocus={() => setProdutoOpen(true)}
+              onChange={(e) => {
+                setProdutoQ(e.target.value);
+                setProdutoOpen(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  produtoReq.current += 1;
+                  setProdutoOpen(false);
+                  setProdutos([]);
+                }
+              }}
               placeholder="Código, descrição, NCM ou R.V.S."
             />
           </Field>
@@ -440,7 +473,9 @@ export default function OrcamentoEditor({ quoteId }: { quoteId?: string }) {
                 <button
                   type="button"
                   className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
+                    produtoReq.current += 1;
                     setLines((prev) => [
                       ...prev,
                       {
@@ -452,11 +487,12 @@ export default function OrcamentoEditor({ quoteId }: { quoteId?: string }) {
                         ncm: p.ncm || '',
                         unit: p.unit || 'UN',
                         quantity: '1',
-                        unitPrice: p.unitPrice,
+                        unitPrice: p.unitPrice || '0.00',
                         discount: '0.00',
                       },
                     ]);
                     setProdutoQ('');
+                    setProdutoOpen(false);
                     setProdutos([]);
                   }}
                 >
@@ -479,6 +515,7 @@ export default function OrcamentoEditor({ quoteId }: { quoteId?: string }) {
                 <th className="py-2 pr-2">Qtde</th>
                 <th className="py-2 pr-2">Pr. un.</th>
                 <th className="py-2 pr-2">Desc.</th>
+                <th className="py-2 pr-2 text-right">Total</th>
                 <th className="py-2"></th>
               </tr>
             </thead>
@@ -499,6 +536,9 @@ export default function OrcamentoEditor({ quoteId }: { quoteId?: string }) {
                   </td>
                   <td className="py-2 pr-2 w-24">
                     <input aria-label="Desconto" className={FIELD_CONTROL_CLS} value={line.discount} disabled={locked} onChange={(e) => setLines((rows) => rows.map((r) => (r.key === line.key ? { ...r, discount: e.target.value } : r)))} />
+                  </td>
+                  <td className="py-2 pr-2 text-right font-medium whitespace-nowrap">
+                    {totals.lines.get(line.key) ? formatCurrency(Number(totals.lines.get(line.key))) : '—'}
                   </td>
                   <td className="py-2">
                     {!locked ? (
