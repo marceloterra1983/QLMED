@@ -49,7 +49,7 @@ Activate when the user mentions Sefaz errors, NF-e rejection codes, SOAP faults,
 1. PFX parsing: uses node-forge to extract cert + key
 2. Certificate is stored encrypted via `ENCRYPTION_KEY`
 3. Common errors: wrong password, expired cert, CNPJ mismatch
-4. Test: read `CertificateConfig`, decrypt, check `expiresAt`
+4. Test: read `CertificateConfig`, decrypt, check `validTo`
 
 ## Response format
 - Always identify the specific integration (Sefaz/NSDocs/Receita)
