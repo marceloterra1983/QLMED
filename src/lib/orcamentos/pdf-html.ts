@@ -1,4 +1,5 @@
 import { esc, fmtCep, fmtCnpj, fmtFone } from '@/lib/pdf/pdf-utils';
+import { DANFE_LOGO_SVG } from '@/lib/pdf/danfe-logo';
 import { QUOTE_CLOSING_CONTACTS, type QuoteIssuer } from './issuer';
 import { formatQuoteNumber } from './totals';
 
@@ -30,6 +31,7 @@ export type QuotePdfView = {
   customerState: string | null;
   customerZip: string | null;
   salesperson: string | null;
+  paymentTerms?: string | null;
   patientName: string | null;
   doctorName: string | null;
   convenio: string | null;
@@ -64,7 +66,76 @@ function isoToBr(iso: string): string {
   return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
 }
 
-export function buildQuoteHtml(quote: QuotePdfView, issuer: QuoteIssuer, page = 1): string {
+function logo(page: number): string {
+  return DANFE_LOGO_SVG
+    .replaceAll('ql-danfe-disc', `ql-quote-disc-${page}`)
+    .replaceAll('ql-danfe-cut-l', `ql-quote-cut-${page}`)
+    .replace('class="emit-logo"', 'class="logo"');
+}
+
+function header(issuer: QuoteIssuer, date: string, page: number, withTitle: boolean): string {
+  return `<table class="head">
+    <tr>
+      <td class="logo-cell">${logo(page)}</td>
+      <td class="issuer">
+        <div class="razao">${esc(issuer.razaoSocial)}</div>
+        <div>CNPJ: ${esc(fmtCnpj(issuer.cnpj))} - Insc. Estadual: ${esc(issuer.ie)}</div>
+        <div>${esc(issuer.addressLine)}</div>
+        <div>Fone: ${esc(fmtFone(issuer.phone))}</div>
+        <div class="mail">${esc(issuer.email)}</div>
+      </td>
+      <td class="meta">Data:&nbsp;&nbsp;${esc(date)}<span>Pag.&nbsp;&nbsp;${page}</span></td>
+    </tr>
+  </table>
+  ${withTitle ? '<div class="titlebar">ORÇAMENTO</div>' : ''}`;
+}
+
+const CSS = `
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #000; }
+  .sheet { page-break-after: always; }
+  .sheet:last-child { page-break-after: auto; }
+  .page { position: relative; }
+  .watermark { position: absolute; top: 42%; left: 8%; font-size: 64px; color: rgba(180,0,0,.22); font-weight: 700; letter-spacing: 8px; transform: rotate(-18deg); }
+  table.head { width: 100%; border: 1px solid #000; border-collapse: collapse; }
+  table.head td { vertical-align: top; padding: 6px 8px 4px; }
+  .logo-cell { width: 78px; padding-right: 0; }
+  .logo { width: 64px; height: 58px; display: block; }
+  .razao { font-size: 15px; font-weight: 700; letter-spacing: 0.3px; margin-bottom: 1px; }
+  .issuer { font-size: 11px; font-weight: 700; line-height: 1.35; }
+  .issuer .mail { font-weight: 400; }
+  .meta { width: 250px; text-align: right; font-weight: 400; font-size: 11px; padding-top: 10px; white-space: nowrap; }
+  .meta span { margin-left: 28px; }
+  .titlebar { border: 1px solid #000; border-top: none; text-align: center; font-weight: 700; letter-spacing: 3px; font-size: 13px; padding: 2px 0 3px; }
+  .intro { margin: 8px 2px 6px; font-size: 11px; }
+  table.client { width: 100%; border: 1px solid #000; border-collapse: collapse; }
+  table.client > tbody > tr > td { padding: 3px 6px; vertical-align: top; font-size: 11px; }
+  table.client > tbody > tr.band > td { border-bottom: 1px solid #000; }
+  .lbl { font-weight: 700; white-space: nowrap; width: 1%; }
+  table.addr { width: 100%; border-collapse: collapse; }
+  table.addr td { padding: 1px 16px 1px 0; border: none; }
+  table.addr .street { width: 46%; }
+  table.addr .num { width: 14%; }
+  table.items { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  table.items th { border-top: 1px solid #000; border-bottom: 1px solid #000; font-size: 11px; font-weight: 700; text-align: left; padding: 3px 4px; }
+  table.items td { padding: 2px 4px 1px; font-size: 11px; vertical-align: top; }
+  table.items .r, table.foot .r { text-align: right; white-space: nowrap; }
+  table.items .c { text-align: center; }
+  .desc { width: 36%; }
+  table.foot { width: 100%; border-collapse: collapse; margin-top: 16px; table-layout: fixed; }
+  table.foot td { font-size: 11px; padding: 3px 4px; vertical-align: baseline; }
+  table.foot td:nth-child(1) { width: 36%; }
+  table.foot td:nth-child(2) { width: 40%; }
+  table.foot td:nth-child(3) { width: 24%; }
+  table.foot .lbl { padding-right: 8px; }
+  .obs { padding-top: 8px; }
+  .close { margin-top: 36px; font-size: 12px; }
+  .rule { margin: 8px 0 10px; border-top: 1px solid #000; width: 360px; }
+  .contacts { line-height: 1.45; }
+`;
+
+export function buildQuoteHtml(quote: QuotePdfView, issuer: QuoteIssuer): string {
   const numberLabel = formatQuoteNumber(quote.number);
   const date = isoToBr(quote.issuedAt);
   const cancelled = quote.status === 'cancelled';
@@ -85,124 +156,101 @@ export function buildQuoteHtml(quote: QuotePdfView, issuer: QuoteIssuer, page = 
       </tr>`;
     })
     .join('');
-
   const contacts = QUOTE_CLOSING_CONTACTS
     .map((c) => `${esc(c.name)} - ${esc(c.email)}`)
     .join('<br>');
-  const addressTop = [quote.customerStreet, quote.customerNumber, quote.customerDistrict]
-    .filter((part) => part && part.trim())
-    .map((part) => esc(part))
-    .join('&nbsp;&nbsp;&nbsp;');
-  const addressBottom = [quote.customerCity, quote.customerState, quote.customerZip ? fmtCep(quote.customerZip) : '']
-    .filter((part) => part && String(part).trim())
-    .map((part) => esc(part))
-    .join('&nbsp;&nbsp;&nbsp;');
+  const zip = quote.customerZip ? fmtCep(quote.customerZip) : '';
 
-  return `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="utf-8"/>
-<title>Orçamento ${esc(numberLabel)}</title>
-<style>
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
-  body { font-family: Arial, Helvetica, sans-serif; font-size: 10px; color: #111; }
-  .page { position: relative; padding: 6px 8px 10px; }
-  .watermark { position: absolute; top: 38%; left: 12%; font-size: 72px; color: rgba(180,0,0,.22); font-weight: 700; letter-spacing: 10px; transform: rotate(-18deg); }
-  table.issuer { width: 100%; border-collapse: collapse; }
-  table.issuer td { font-size: 11px; font-weight: 700; line-height: 1.35; text-align: center; padding: 0; }
-  table.issuer .meta { width: 34%; text-align: right; font-weight: 400; font-size: 10px; vertical-align: top; padding-top: 14px; }
-  table.issuer .meta span { margin-left: 28px; }
-  .title { text-align: center; font-size: 18px; font-weight: 700; letter-spacing: 6px; margin: 18px 0 12px; }
-  .intro { margin: 0 0 12px; font-size: 11px; }
-  table.box, table.items, table.foot { width: 100%; border-collapse: collapse; }
-  table.box td { padding: 3px 8px 3px 0; vertical-align: top; font-size: 11px; }
-  .lbl { font-weight: 700; white-space: nowrap; padding-right: 10px; }
-  .addr2 { padding-left: 78px; }
-  table.items { margin-top: 14px; }
-  table.items th { border-top: 1px solid #000; border-bottom: 1px solid #000; font-size: 10px; font-weight: 700; text-align: left; padding: 4px 6px; }
-  table.items td { padding: 5px 6px 2px; font-size: 10px; vertical-align: top; }
-  table.items .c { text-align: center; }
-  table.items .r { text-align: right; white-space: nowrap; }
-  table.items .desc { width: 36%; }
-  table.foot { margin-top: 8px; }
-  table.foot td { vertical-align: top; font-size: 11px; padding: 2px 0; }
-  table.totals { width: 100%; }
-  table.totals td { padding: 2px 0 2px 12px; font-size: 11px; }
-  table.totals .r { text-align: right; font-weight: 700; white-space: nowrap; width: 110px; }
-  .obs { margin-top: 10px; font-size: 11px; }
-  .sign { margin-top: 14px; font-size: 11px; }
-  .rule { margin-top: 10px; border-top: 1px solid #000; width: 280px; }
-  .contacts { margin-top: 6px; line-height: 1.5; font-size: 11px; }
-</style>
-</head>
-<body>
-<div class="page">
-  ${cancelled ? '<div class="watermark">CANCELADO</div>' : ''}
-  <table class="issuer">
-    <tr><td colspan="2">${esc(issuer.razaoSocial)}</td></tr>
-    <tr>
-      <td>CNPJ: ${esc(fmtCnpj(issuer.cnpj))} - Insc. Estadual: ${esc(issuer.ie)}</td>
-      <td class="meta">Data: ${esc(date)}<span>Pag. ${page}</span></td>
-    </tr>
-    <tr><td colspan="2">${esc(issuer.addressLine)}</td></tr>
-    <tr><td colspan="2">Fone: ${esc(fmtFone(issuer.phone))}</td></tr>
-    <tr><td colspan="2">${esc(issuer.email)}</td></tr>
-  </table>
-  <div class="title">ORÇAMENTO</div>
-  <p class="intro">Segue abaixo os itens solicitados para orçamento:</p>
-  <table class="box">
-    <tr>
+  const body = `<p class="intro">Segue abaixo os itens solicitados para orçamento:</p>
+  <table class="client">
+    <tr class="band">
       <td class="lbl">No. :</td><td>${esc(numberLabel)}</td>
       <td class="lbl">Data:</td><td>${esc(date)}</td>
       <td class="lbl">Cliente:</td><td>${esc(quote.customerName)}</td>
       <td class="lbl">Cód.:</td><td>${esc(quote.customerCode)}</td>
     </tr>
-    <tr>
+    <tr class="band">
       <td class="lbl">Endereço:</td>
-      <td colspan="7">${addressTop}</td>
-    </tr>
-    <tr>
-      <td></td>
-      <td class="addr2" colspan="7">${addressBottom}</td>
+      <td colspan="7">
+        <table class="addr">
+          <tr>
+            <td class="street">${esc(quote.customerStreet)}</td>
+            <td class="num">${esc(quote.customerNumber)}</td>
+            <td>${esc(quote.customerDistrict)}</td>
+          </tr>
+          <tr>
+            <td>${esc(quote.customerCity)}</td>
+            <td>${esc(quote.customerState)}</td>
+            <td>${esc(zip)}</td>
+          </tr>
+        </table>
+      </td>
     </tr>
     <tr>
       <td class="lbl">CNPJ.:</td><td>${esc(fmtCnpj(quote.customerCnpj))}</td>
       <td class="lbl">Inscr. Est.:</td><td>${esc(quote.customerIe)}</td>
-      <td class="lbl">Vendedor:</td><td colspan="3">${esc(quote.salesperson) || '—'}</td>
+      <td></td><td></td>
+      <td class="lbl">Vendedor:</td><td>${esc(quote.salesperson)}</td>
     </tr>
   </table>
   <table class="items">
     <thead>
       <tr>
         <th>Ítem</th><th>Código</th><th class="desc">Descrição</th><th>R.V.S.</th><th>NCM</th>
-        <th>Un.</th><th class="r">Qtde.</th><th class="r">Pr. Un.</th><th class="r">Desc.</th><th class="r">Total</th>
+        <th class="c">Un.</th><th class="r">Qtde.</th><th class="r">Pr. Un.</th><th class="r">Desc.</th><th class="r">Total</th>
       </tr>
     </thead>
     <tbody>${rows}</tbody>
   </table>
   <table class="foot">
     <tr>
-      <td>
-        <div><span class="lbl">Médico :</span> ${esc(quote.doctorName) || '—'}</div>
-        <div><span class="lbl">Paciente :</span> ${esc(quote.patientName) || '—'}</div>
-        <div><span class="lbl">Convênio :</span> ${esc(quote.convenio) || '—'}</div>
-        <div><span class="lbl">Local:</span> ${esc(quote.local) || '—'}</div>
-      </td>
-      <td style="width:280px">
-        <table class="totals">
-          <tr><td>Sub-Total:</td><td class="r">${esc(fmtBr(quote.subtotal))}</td></tr>
-          <tr><td>Frete:</td><td class="r">${esc(fmtBr(quote.freight))}</td></tr>
-          <tr><td>Total:</td><td class="r">${esc(fmtBr(quote.total))}</td></tr>
-        </table>
-      </td>
+      <td><span class="lbl">Forma de Pag.:</span> ${esc(quote.paymentTerms)}</td>
+      <td>&nbsp;</td>
+      <td class="r"><span class="lbl">Sub-Total:</span> ${esc(fmtBr(quote.subtotal))}</td>
     </tr>
-  </table>
-  <div class="obs"><span class="lbl">Obs:</span> ${esc(quote.notes)}</div>
-  <div class="sign">Atenciosamente,</div>
+    <tr>
+      <td>&nbsp;</td>
+      <td><span class="lbl">Paciente :</span> ${esc(quote.patientName)}</td>
+      <td class="r"><span class="lbl">Frete:</span> ${esc(fmtBr(quote.freight))}</td>
+    </tr>
+    <tr>
+      <td><span class="lbl">Médico :</span> ${esc(quote.doctorName)}</td>
+      <td><span class="lbl">Convênio :</span> ${esc(quote.convenio)}</td>
+      <td class="r"><span class="lbl">Total:</span> ${esc(fmtBr(quote.total))}</td>
+    </tr>
+    <tr>
+      <td>&nbsp;</td>
+      <td><span class="lbl">Local:</span> ${esc(quote.local)}</td>
+      <td>&nbsp;</td>
+    </tr>
+    <tr>
+      <td class="obs" colspan="3"><span class="lbl">Obs:</span> ${esc(quote.notes)}</td>
+    </tr>
+  </table>`;
+
+  const closing = `<div class="close">Atenciosamente,</div>
   <div class="rule"></div>
-  <div class="contacts">${contacts}</div>
-</div>
+  <div class="contacts">${contacts}</div>`;
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<title>Orçamento ${esc(numberLabel)}</title>
+<style>${CSS}</style>
+</head>
+<body>
+<section class="sheet">
+  <div class="page">
+    ${cancelled ? '<div class="watermark">CANCELADO</div>' : ''}
+    ${header(issuer, date, 1, true)}
+    ${body}
+  </div>
+</section>
+<section class="sheet">
+  ${header(issuer, date, 2, false)}
+  ${closing}
+</section>
 </body>
 </html>`;
 }

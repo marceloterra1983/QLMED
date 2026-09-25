@@ -57,8 +57,14 @@ describe('SPEC-085 — HTML do PDF no modelo SPICA H020', () => {
     expect(html).toContain('MT SAUDE - 007');
     expect(html).toContain('AMECOR ASSIST MEDICA CARDIOL LTDA');
     expect(html).toContain(QL_MED_ISSUER.razaoSocial);
+    expect(html).toContain('class="titlebar"');
     expect(html).toContain('class="rule"');
+    expect(html).toContain('Forma de Pag.:');
+    expect(html).toContain('ql-quote-disc-1');
+    expect(html).toContain('Avenida das Flores');
+    expect(html).toContain('941');
     expect(html).toContain('Sub-Total:');
+    expect(html.indexOf('Médico :')).toBeLessThan(html.indexOf('Atenciosamente'));
     expect(html).not.toContain('joinner');
     expect(html).not.toContain('SPICA');
   });
