@@ -9,9 +9,10 @@
  *
  * - notjev local: `TYPESAFE_BASE_URL` (default `http://127.0.0.1:8787`). Sem a
  *   variável, vira no-op (nada é enviado nem gravado) — seguro em produção.
- * - fail-closed: se a base não for loopback (127.0.0.1 / localhost / ::1), NÃO
- *   chama o notjev — grava linha com `error: "base_url_nao_local"` (dado de
- *   fornecedor não sai sem autorização).
+ * - fail-closed: se a base não for loopback (127.0.0.1 / localhost / ::1)
+ *   nem estiver na allowlist explícita `JEV_TRUSTED_HOSTS` (default vazio,
+ *   sem curinga), NÃO chama o notjev — grava linha com
+ *   `error: "base_url_nao_local"` (dado de fornecedor não sai sem autorização).
  * - api key do notjev vem de `TYPESAFE_API_KEY` (fallback `local`).
  * - modelo fixo `jev-1.13.0`, timeout curto (≤ 2 s), fail-open: erro do Jev
  *   nunca quebra o fluxo (a chamada é `void` e todo erro vira linha de JSONL).
@@ -72,6 +73,8 @@ export interface OutOfScopeShadowDeps {
   enabled?: boolean;
   baseUrl?: string;
   apiKey?: string;
+  /** Allowlist explícita de hosts (além do loopback). Default: JEV_TRUSTED_HOSTS. */
+  trustedHosts?: string[];
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
   /** Injetável para teste: decide (o padrão chama o notjev). */
@@ -113,6 +116,31 @@ export function isOutOfScopeShadowEnabled(deps?: { enabled?: boolean }): boolean
 /** Base efetiva do notjev (mesma resolução usada em produção). */
 export function resolveOutOfScopeShadowBaseUrl(deps?: { baseUrl?: string }): string {
   return (deps?.baseUrl ?? process.env.TYPESAFE_BASE_URL ?? DEFAULT_BASE_URL).replace(/\/+$/, '');
+}
+
+/** Hosts explícitos além do loopback (`JEV_TRUSTED_HOSTS`, default vazio). Sem curinga. */
+export function resolveTrustedShadowHosts(deps?: { trustedHosts?: string[] }): string[] {
+  const raw =
+    deps?.trustedHosts !== undefined ? deps.trustedHosts : (process.env.JEV_TRUSTED_HOSTS ?? '').split(/[,;\s]+/);
+  return raw
+    .map((host) => host.trim().replace(/^\[|\]$/g, '').toLowerCase())
+    .filter((host) => host.length > 0 && !host.includes('*'));
+}
+
+/**
+ * Fail-closed: dado de fornecedor só sai para loopback local ou host
+ * explicitamente listado em `JEV_TRUSTED_HOSTS`. Qualquer outro host recusa.
+ */
+export function isAllowedShadowBaseUrl(baseUrl: string, deps?: { trustedHosts?: string[] }): boolean {
+  if (isLoopbackBaseUrl(baseUrl)) return true;
+  let hostname: string;
+  try {
+    hostname = new URL(baseUrl).hostname;
+  } catch {
+    return false;
+  }
+  const normalized = hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  return resolveTrustedShadowHosts(deps).includes(normalized);
 }
 
 /** Fail-closed: dado de fornecedor só sai para loopback local. */
@@ -210,8 +238,8 @@ export async function recordOutOfScopeShadow(
 
   const appendLine = deps.appendLine ?? defaultAppendLine;
 
-  // Fail-closed: dado de fornecedor não sai para base não-local.
-  if (!isLoopbackBaseUrl(resolveOutOfScopeShadowBaseUrl(deps))) {
+  // Fail-closed: dado de fornecedor não sai para base não autorizada.
+  if (!isAllowedShadowBaseUrl(resolveOutOfScopeShadowBaseUrl(deps), deps)) {
     record.error = 'base_url_nao_local';
     await safeAppend(appendLine, record);
     return;

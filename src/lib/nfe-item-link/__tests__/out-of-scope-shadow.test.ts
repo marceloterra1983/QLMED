@@ -1,12 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   decideOutOfScopeShadow,
+  isAllowedShadowBaseUrl,
   isLoopbackBaseUrl,
   isOutOfScopeShadowEnabled,
   isPatientData,
   outOfScopeShadowQuestions,
   outOfScopeShadowState,
   recordOutOfScopeShadow,
+  resolveTrustedShadowHosts,
 } from '../out-of-scope-shadow';
 
 describe('outOfScopeShadowState / questions / guard', () => {
@@ -43,6 +45,29 @@ describe('outOfScopeShadowState / questions / guard', () => {
     expect(isLoopbackBaseUrl('https://api.example.com')).toBe(false);
     expect(isLoopbackBaseUrl('http://10.0.0.1:8787')).toBe(false);
     expect(isLoopbackBaseUrl('not a url')).toBe(false);
+  });
+
+  it('allowlist JEV_TRUSTED_HOSTS: default vazio, sem curinga', () => {
+    const previous = process.env.JEV_TRUSTED_HOSTS;
+    delete process.env.JEV_TRUSTED_HOSTS;
+    try {
+      expect(resolveTrustedShadowHosts()).toEqual([]);
+      expect(isAllowedShadowBaseUrl('http://100.68.84.119:8787')).toBe(false);
+    } finally {
+      if (previous === undefined) delete process.env.JEV_TRUSTED_HOSTS;
+      else process.env.JEV_TRUSTED_HOSTS = previous;
+    }
+    expect(resolveTrustedShadowHosts({ trustedHosts: ['100.68.84.119'] })).toEqual(['100.68.84.119']);
+    expect(resolveTrustedShadowHosts({ trustedHosts: ['*', '*.example.com'] })).toEqual([]);
+  });
+
+  it('100.68.84.119 permitido só se listado; externo sempre recusado', () => {
+    expect(isAllowedShadowBaseUrl('http://100.68.84.119:8787', { trustedHosts: ['100.68.84.119'] })).toBe(true);
+    expect(isAllowedShadowBaseUrl('http://100.68.84.119:8787', { trustedHosts: [] })).toBe(false);
+    expect(isAllowedShadowBaseUrl('https://api.typesafe.ai', { trustedHosts: ['100.68.84.119'] })).toBe(false);
+    expect(isAllowedShadowBaseUrl('https://api.typesafe.ai', { trustedHosts: ['api.typesafe.ai'] })).toBe(true);
+    expect(isAllowedShadowBaseUrl('http://10.0.0.1:8787', { trustedHosts: ['100.68.84.119'] })).toBe(false);
+    expect(isAllowedShadowBaseUrl('http://127.0.0.1:8787', { trustedHosts: [] })).toBe(true);
   });
 });
 
@@ -169,6 +194,19 @@ describe('recordOutOfScopeShadow', () => {
     );
     expect(decide).not.toHaveBeenCalled();
     expect(lines).toHaveLength(0);
+  });
+
+  it('host confiável listado chama o notjev (sem error)', async () => {
+    const lines: string[] = [];
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
+      ({ ok: true, status: 200, json: async () => ({ answers: { out_of_scope: { noul: 0.9 } } }) }) as unknown as Response,
+    );
+    await recordOutOfScopeShadow(
+      { supplierName: 'AUTOBEL', description: 'OLEO' },
+      { enabled: true, baseUrl: 'http://100.68.84.119:8787', trustedHosts: ['100.68.84.119'], fetchImpl, appendLine: async (l) => { lines.push(l); } },
+    );
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(lines[0]).error).toBeNull();
   });
 
   it('fail-closed: base externa não chama fetch e grava base_url_nao_local', async () => {
