@@ -19,6 +19,7 @@ import {
   S6_AUTO_MIN_CONFIDENCE,
 } from './match';
 import { isSkippedStrategy } from './skip';
+import { recordOutOfScopeShadow } from './out-of-scope-shadow';
 import { normalizeCnpj, normalizeSupplierCode } from './normalize';
 
 const log = createLogger('nfe-item-link');
@@ -130,6 +131,9 @@ export async function decideInvoiceItems(
     };
     // Sempre avalia: SKIPPED_* aplica mesmo sem cProd/EAN/ANVISA.
     const decision = matchItem(input, index, memory, { ownCnpj });
+    // Sombra (bt2_fora_escopo): triagem "fora de escopo" do Jev. Não altera a
+    // decisão — só grava a resposta do notjev num JSONL (fail-open, ≤2s).
+    void recordOutOfScopeShadow({ supplierName: input.supplierName, description: input.description });
     rows.push({ ...input, itemNumber, unit: p.unit === '-' ? null : p.unit, decision });
   });
   return rows;
