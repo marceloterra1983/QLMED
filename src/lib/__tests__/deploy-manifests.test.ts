@@ -169,6 +169,31 @@ describe('QLMED-SUPPLY-002 — imagem base do app pinada por digest', () => {
   });
 });
 
+function commitShaAfterChromium(dockerfile: string): boolean {
+  const lines = dockerfile.split('\n');
+  const runnerAt = lines.findIndex((line) => line.startsWith('FROM ') && line.endsWith(' AS runner'));
+  const runner = lines.slice(runnerAt + 1);
+  const apkAt = runner.findIndex((line) => line.replace(/\\/g, '').trim() === 'chromium');
+  const shaAt = runner.findIndex((line) => line.includes('QLMED_BUILD_COMMIT_SHA'));
+  return apkAt >= 0 && shaAt > apkAt;
+}
+
+describe('QLMED-SUPPLY-004 — SHA do release não invalida o Chromium', () => {
+  it('o SHA só aparece depois do apk do chromium', () => {
+    expect(commitShaAfterChromium(read('Dockerfile'))).toBe(true);
+  });
+
+  it('reprova o SHA declarado antes do chromium (controlo)', () => {
+    const early = [
+      'FROM node:22-alpine@sha256:' + 'a'.repeat(64) + ' AS runner',
+      'ARG QLMED_BUILD_COMMIT_SHA=abc',
+      'RUN apk add --no-cache \\',
+      '    chromium',
+    ].join('\n');
+    expect(commitShaAfterChromium(early)).toBe(false);
+  });
+});
+
 /**
  * QLMED-OPS-005: `deploy-production.yml` para o `qlmed-app`, roda
  * `migrate deploy` e sobe de novo. Se a implantação falhar depois do migrate, o
